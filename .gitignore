@@ -3,8 +3,11 @@
 .RData
 .Ruserdata
 .DS_Store
-data/raw/fr_cdsp_ddi_elipss_202312_bee.csv
 renv/library/
 renv/staging/
+# Ignore only raw data file (since it’s external)
+data/raw/fr_cdsp_ddi_elipss_202312_bee.csv
+
+# Ignore processed data but keep the folder
 data/processed/*
 !data/processed/.gitkeep
