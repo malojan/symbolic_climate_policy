@@ -1,0 +1,6 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+data/raw/fr_cdsp_ddi_elipss_202312_bee.csv
