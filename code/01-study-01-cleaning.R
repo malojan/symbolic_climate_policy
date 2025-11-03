@@ -26,10 +26,10 @@ set.seed(1234)  # for reproducibility
 
 # -----------------------------------------------------------------------------
 # 1. Import raw data
-# CSV Data file has to be downloaded from: https://doi.org/10.21410/7E4/OH0RKI
+# CSV Data file has to be asked and downloaded from data.sciencespo: https://doi.org/10.21410/7E4/OH0RKI
 # -----------------------------------------------------------------------------
 
-bee <- read_csv2(here("data/raw/bee0_postprod_240124_110736.csv"))
+bee <- read_csv(here("data/raw/fr_cdsp_ddi_elipss_202312_bee.csv"))
 
 # -----------------------------------------------------------------------------
 # 2. Recode demographic and attitudinal variables
@@ -106,7 +106,8 @@ bee <- bee |>
     flight_use = case_when(
       bee0_C35 >= 1 ~ "Yes",
       TRUE ~ "No"
-    ) |> as.factor()
+    ) |> as.factor(),
+    POIDS_bee0 = str_replace(POIDS_bee0, ",", ".") |> as.numeric()
   )
 
 # -----------------------------------------------------------------------------
