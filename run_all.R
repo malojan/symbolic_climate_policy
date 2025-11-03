@@ -1,55 +1,47 @@
 # =============================================================================
 # run_all.R
-# Purpose : Master script to reproduce all analyses (robust renv-safe version)
+# Purpose : Master script to reproduce all analyses (replication version)
 # Author  : Malo JAN
 # =============================================================================
 
-# --- 0. Ensure renv is available ---------------------------------------------
+# --- 0. Ensure renv is installed ---------------------------------------------
 if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
 
-# Activate renv only if not already active
-if (is.null(Sys.getenv("RENV_PROJECT")) || Sys.getenv("RENV_PROJECT") == "") {
-  tryCatch({
-    renv::activate()
-    message("renv environment activated.")
-  }, error = function(e) {
-    message(paste("renv activation failed:", e$message))
-    stop("Cannot continue without renv environment.")
-  })
+# --- 1. Check and activate environment ---------------------------------------
+message("Checking renv environment...")
+
+# If renv library missing, restore from lockfile
+if (!dir.exists("renv/library")) {
+  message("Restoring project environment from renv.lock ...")
+  renv::restore(prompt = FALSE)
 } else {
-  message("renv already active — skipping activation.")
+  message("renv environment already set up.")
 }
 
-# --- 1. Load libraries (after renv activation) -------------------------------
-for (pkg in c("purrr", "glue", "here")) {
-  if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg)
-  library(pkg, character.only = TRUE)
-}
+# renv::activate() happens automatically via .Rprofile
+
+# --- 2. Load base helper packages --------------------------------------------
+library(purrr)
+library(glue)
+library(here)
 
 message(glue("\n===== Starting replication pipeline ====="))
 
-# --- 2. Set working directory -------------------------------------------------
-root_dir <- here::here()
-setwd(root_dir)
-message(glue("📁 Working directory set to: {root_dir}"))
-
-# --- 3. Helper function -------------------------------------------------------
+# --- 3. Helper to safely run scripts ------------------------------------------
 run_script <- function(file) {
-  message(glue("\n--- Running: {file} ---"))
-  tryCatch(
-    {
-      source(file, echo = TRUE, max.deparse.length = Inf)
-      message(glue("Completed: {file}"))
-      TRUE
-    },
-    error = function(e) {
-      message(glue("Error in {file}: {e$message}"))
-      FALSE
-    }
-  )
+  file_path <- here::here(file)
+  message(glue("\n---  Running: {file_path} ---"))
+  tryCatch({
+    source(file_path, echo = TRUE, max.deparse.length = Inf, local = new.env())
+    message(glue("Completed: {file}"))
+    TRUE
+  }, error = function(e) {
+    message(glue("Error in {file}: {e$message}"))
+    FALSE
+  })
 }
 
-# --- 4. Define scripts --------------------------------------------------------
+# --- 4. Define scripts to run -------------------------------------------------
 scripts <- c(
   "code/01-study-01-cleaning.R",
   "code/02-study-01-analysis.R",
@@ -57,7 +49,7 @@ scripts <- c(
   "code/04-study-03-analysis.R"
 )
 
-# --- 5. Run everything --------------------------------------------------------
+# --- 5. Execute pipeline ------------------------------------------------------
 results <- purrr::map_lgl(scripts, run_script)
 
 # --- 6. Summary ---------------------------------------------------------------
