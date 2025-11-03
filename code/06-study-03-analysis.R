@@ -151,11 +151,11 @@ save_stargazer <- function(df, outcome, dep_var_label, group_labels, file_name, 
 # --- 5. Automated export of all Study 3 tables -------------------------------
 table_specs <- tribble(
   ~outcome,      ~dep_var_label,         ~title,                                      ~file,
-  "support",     "Support",               "OLS models Study 3 : Policy support",       "outputs/tables/ols-models-study-03-support.tex",
-  "justice",     "Fairness",              "OLS models Study 3 : Policy fairness",      "outputs/tables/ols-models-study-03-fairness.tex",
-  "effective",   "Effectiveness",         "OLS models Study 3 : Policy effectiveness", "outputs/tables/ols-models-study-03-effectiveness.tex",
-  "seriousness", "Seriousness",           "OLS models Study 3 : Policy seriousness",   "outputs/tables/ols-models-study-03-seriousness.tex",
-  "elite",       "Elite responsiveness",  "OLS models Study 3 : Elite responsiveness", "outputs/tables/ols-models-study-03-elite.tex"
+  "support",     "Support",               "OLS models Study 3 : Policy support",       "outputs/tables/appendix-tbl-08.tex",
+  "justice",     "Fairness",              "OLS models Study 3 : Policy fairness",      "outputs/tables/appendix-tbl-09.tex",
+  "effective",   "Effectiveness",         "OLS models Study 3 : Policy effectiveness", "outputs/tables/appendix-tbl-10.tex",
+  "seriousness", "Seriousness",           "OLS models Study 3 : Policy seriousness",   "outputs/tables/appendix-tbl-11.tex",
+  "elite",       "Elite responsiveness",  "OLS models Study 3 : Elite responsiveness", "outputs/tables/appendix-tbl-12.tex"
 )
 
 # Automatically export all tables

@@ -47,8 +47,10 @@ prep_data <- function(data, treatment_col, support_col, experiment_name) {
     rename(
       treatment = {{ treatment_col }},
       support   = {{ support_col }}
-    ) |>
-    mutate(experiment = experiment_name)
+    ) |> 
+    mutate(
+    experiment = experiment_name)
+
 }
 
 bee_highway <- prep_data(bee_clean, treatment_highway, support_highway_num, "highway")
@@ -79,7 +81,7 @@ model_list <- list(ols_highway_t_only, ols_highway, ols_flight_t_only, ols_fligh
 
 stargazer(
   model_list,
-  type             = "html",
+  type             = "latex",
   single.row       = TRUE,
   font.size        = "small",
   digits           = 2,
@@ -88,14 +90,14 @@ stargazer(
   column.sep.width = "1pt",
   dep.var.labels   = c("Speed limit highway", "Ban air travel"),
   covariate.labels = c(
-    "T- Symbolic minister", "T- Symbolic Rich", "Ideology",
+    "T- Symbolic Rich", "T- Symbolic Minister", "Ideology",
     "Government satisfaction", "Gender - Male", "Income", "Age",
     "Education - CAP/BEPC", "Education - DIPL-SUP", "Education - NO",
     "Urban - Rural", "Main transport - Car", "Flight use", "Climate concern"
   ),
   star.cutoffs     = c(0.05, 0.01, 0.001),
   omit.stat        = c("f", "ser"),
-  out              = here("outputs/tables/ols_models.tex")
+  out              = here("outputs/tables/appendix-tbl-03.tex")
 )
 
 # --- 4. Coefficient extraction for ATE plot -----------------------------------
@@ -205,8 +207,8 @@ stargazer(
   column.sep.width = "1pt",
   dep.var.labels   = c("Speed limit highway", "Ban air travel"),
   covariate.labels = c(
-    "T- Symbolic minister",
     "T- Symbolic Rich",
+    "T- Symbolic Minister",
     "Main Transport - Car",
     "Flight use",
     "Ideology",
@@ -229,7 +231,7 @@ stargazer(
   flip         = TRUE,
   star.cutoffs = c(0.05, 0.01, 0.001),
   omit.stat    = c("f", "ser"),
-  out          = "outputs/tables/ols_models_int_behavior.tex"
+  out          = "outputs/tables/appendix-tbl-05.tex"
 )
 
 ## 7.2 Interaction with ideology
@@ -258,8 +260,8 @@ stargazer(
   column.sep.width = "1pt",
   dep.var.labels   = c("Speed limit highway", "Ban air travel"),
   covariate.labels = c(
-    "T- Symbolic minister",
     "T- Symbolic Rich",
+    "T- Symbolic Minister",
     "Ideology",
     "Government satisfaction",
     "Gender - Male",
@@ -279,7 +281,7 @@ stargazer(
   ci.level     = 0.95,
   star.cutoffs = c(0.05, 0.01, 0.001),
   omit.stat    = c("f", "ser"),
-  out          = "outputs/tables/ols_models_int_ideology.tex"
+  out          = "outputs/tables/appendix-tbl-04.tex"
 )
 
 ## 7.3 Interaction with general climate policy support
@@ -309,8 +311,8 @@ stargazer(
   column.sep.width = "1pt",
   dep.var.labels   = c("Speed limit highway", "Ban air travel"),
   covariate.labels = c(
-    "T- Symbolic minister",
     "T- Symbolic Rich",
+    "T- Symbolic Minister",
     "Cluster - Moderate climate policy",
     "Cluster - Pro climate policy",
     "Ideology",
@@ -325,16 +327,16 @@ stargazer(
     "Main Transport - Car",
     "Flight use",
     "Climate concern",
-    "T- Symbolic minister: Moderate climate policy",
     "T- Symbolic Rich: Moderate climate policy",
-    "T- Symbolic minister: Pro climate policy",
-    "T- Symbolic Rich: Pro climate policy"
+    "T- Symbolic Minister: Moderate climate policy",
+    "T- Symbolic Riche: Pro climate policy",
+    "T- Symbolic Minister: Pro climate policy"
   ),
   ci           = FALSE,
   ci.level     = 0.95,
   star.cutoffs = c(0.05, 0.01, 0.001),
   omit.stat    = c("f", "ser"),
-  out          = "outputs/tables/ols_models_int_policy.tex"
+  out          = "outputs/tables/appendix-tbl-06.tex"
 )
 
 # 8. Predicted values plots for interactions --------------------------------
@@ -382,6 +384,10 @@ bind_rows(predictions_ols_int_behavior, predictions_ols_int_behavior_flights) |>
   facet_wrap(~policy) +
   coord_flip()
 
+ggsave(
+  "outputs/figures/appendix-figure-14.png",
+)
+
 ## 8.2 Interaction with ideology
 predictions_ols_int_ideology <- ggpredict(
   ols_highway_int_ideology, terms = c("treatment", "ideology[0,1,2, 3,4, 5,6,7,9, 10] ")
@@ -422,6 +428,11 @@ bind_rows(
   theme(legend.position = "bottom") +
   coord_flip() +
   facet_wrap(~policy, scales = "free")
+
+ggsave(
+  "outputs/figures/appendix-figure-15.png",
+)
+
 
 ## 8.3 Interaction with policy support cluster
 
@@ -466,4 +477,92 @@ bind_rows(
   facet_wrap(~policy) +
   coord_flip()
 
+ggsave(
+  "outputs/figures/appendix-figure-16.png",
+)
 
+# Robustness checks - Deviation from pre-registration ----------------------- 
+
+ols_highway_pre_registred <- lm(
+  support ~ treatment + gov_sati_num + gender + income + age_num_12 +  education_cat + urban_rural_num  + car_main_transport ,
+  data = bee_highway,
+  weights = POIDS_bee0
+)
+ols_highway_paper <- lm(
+  support ~ treatment + gov_sati_num + gender + income + age_num_12 +  education_cat + urban_rural_num  + car_main_transport + ideology + climate_concern,
+  data = bee_highway,
+  weights = POIDS_bee0
+)
+
+ols_flight_pre_registred<- lm(
+  support ~ treatment + gov_sati_num + gender + income + age_num_12 +  education_cat + urban_rural_num,
+  data = bee_flight,
+  weights = POIDS_bee0
+)
+ols_flight_paper <- lm(
+  support ~ treatment + gov_sati_num + gender + income + age_num_12 +  education_cat + urban_rural_num  + flight_use + ideology + climate_concern,
+  data = bee_flight,
+  weights = POIDS_bee0
+)
+
+stargazer(list(ols_highway_pre_registred, ols_highway_paper), 
+          type = 'latex', 
+          single.row = T, 
+          font.size = "small",
+          digits = 3,
+          title = "OLS models",
+          column.labels = c("As pre-registered", "Actual model in paper"),
+          column.sep.width = "1pt",
+          dep.var.labels = c("Speed limit higwhay"),
+          ci=F, 
+          covariate.labels = c(
+            "T- Symbolic minister",
+            "T- Symbolic Rich",
+            "Government satisfaction",
+            "Gender - Male",
+            "Income",
+            "Age",
+            "Education - CAP/BEPC",
+            "Education - DIPL-SUP",
+            "Education - NO",
+            "Urban - Rural",
+            "Main transport - Car",
+            "Ideology",
+            "Climate concern"
+          ),
+          ci.level=0.95, 
+          flip=TRUE,
+          star.cutoffs = c(0.05, 0.01, 0.001),
+          omit.stat=c("f", "ser"),
+          out = "outputs/tables/appendix-tbl-01.tex")
+
+stargazer(ols_flight_pre_registred, ols_flight_paper, 
+          type = 'latex', 
+          single.row = T, 
+          font.size = "small",
+          digits = 3,
+          title = "OLS models",
+          column.labels = c("As pre-registered", "As supposed in pre-registration", "Actual model in paper"),
+          column.sep.width = "1pt",
+          dep.var.labels = c("Ban air travel"),
+          ci=F, 
+          covariate.labels = c(
+            "T- Symbolic minister",
+            "T- Symbolic Rich",
+            "Government satisfaction",
+            "Gender - Male",
+            "Income",
+            "Age",
+            "Education - CAP/BEPC",
+            "Education - DIPL-SUP",
+            "Education - NO",
+            "Urban - Rural",
+            "Flight use",
+            "Ideology",
+            "Climate concern"
+          ),
+          ci.level=0.95, 
+          flip=TRUE,
+          star.cutoffs = c(0.05, 0.01, 0.001),
+          omit.stat=c("f", "ser"),
+          out = "outputs/tables/appendix-tbl-02.tex")

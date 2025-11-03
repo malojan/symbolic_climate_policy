@@ -86,9 +86,11 @@ run_script <- function(file) {
 # --- 5. Define scripts to run -------------------------------------------------
 scripts <- c(
   "code/01-study-01-cleaning.R",
-  "code/02-study-01-analysis.R",
-  "code/03-study-03-cleaning.R",
-  "code/04-study-03-analysis.R"
+  "code/02-study-01-descriptives.R",
+  "code/03-study-01-analysis.R",
+  "code/04-study-03-cleaning.R",
+  "code/05-study-03-descriptives.R",
+  "code/06-study-03-analysis.R"
 )
 
 # --- 6. Execute all scripts ---------------------------------------------------

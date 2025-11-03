@@ -21,6 +21,7 @@ library(tidyverse)
 library(here)
 library(FactoMineR)
 library(janitor)
+library(factoextra)
 
 # --- 1. Import raw data -------------------------------------------------------
 # The CSV file must be manually downloaded from data.sciencespo.fr
@@ -214,8 +215,46 @@ cp_data <- bee |>
 # Principal Component Analysis (PCA)
 cp_pca <- FactoMineR::PCA(cp_data, scale.unit = TRUE, graph = FALSE)
 
+fviz_pca_var(cp_pca,  repel = TRUE) 
+
+ggsave("outputs/figures/appendix-figure-11.png")
+
 # Hierarchical clustering on principal components
 hcpc <- FactoMineR::HCPC(cp_pca, graph = FALSE)
+
+factoextra::fviz_cluster(hcpc,
+                         repel = FALSE,            # Avoid label overlapping
+                         show.clust.cent = TRUE, # Show cluster centers
+                         palette = "jco",         # Color palette see ?ggpubr::ggpar
+                         ggtheme = theme_minimal(),
+                         # Change color to grey
+                         
+                         
+                         main = "Factor map",
+                         # Remove labels
+                         geom = "point",
+)  
+
+ggsave("outputs/figures/appendix-figure-12.png")
+
+hcpc_clusters <- hcpc$data.clust |> as_tibble() |> 
+  select(clust)
+
+hcpc_clusters |>
+  mutate(
+    cluster = case_when(
+      clust == 1 ~ "Pro-climate policy",
+      clust == 2 ~ "Moderate climate-policy",
+      clust == 3 ~ "Anti-climate policy"
+    )
+  ) |> 
+  ggplot() +
+  geom_bar(aes(x = factor(cluster), ..prop.., group = 1)) +
+  scale_x_discrete('Cluster') +
+  scale_y_continuous("Share", labels = scales::percent) +
+  theme_light()
+
+ggsave("outputs/figures/appendix-figure-13.png")
 
 # Extract PCA coordinates and cluster assignments
 cp_coords <- cp_pca$ind$coord |>
