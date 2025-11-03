@@ -40,6 +40,6 @@ This script will:
 - Estimate all models,
 - Generate all tables and figures, saved to `outputs/`. 
 
-To run the replication, the Study 1 data file `fr_cdsp_ddi_elipss_202312_bee.csv` has to be downloaded from [data.sciencespo.fr](https://doi.org/10.21410/7E4/OH0RKI) and placed in the `data/raw/` folder. The data for Study 2 are already included in this repository under `data/processed/`.
+To run the replication, the Study 1 data file `fr_cdsp_ddi_elipss_202312_bee.csv` has to be downloaded from [data.sciencespo.fr](https://doi.org/10.21410/7E4/OH0RKI) and placed in the `data/raw/` folder. The data for Study 2 are already included in this repository under `data/raw/`.
 
 
