@@ -1,7 +1,7 @@
 # =============================================================================
 # 01-study1-cleaning.R
 # Purpose  : Clean and recode the BEE dataset for replication of Study 1
-# Authors  : Malo Jan & Luis Sattelmayer
+# Authors  : Malo Jan
 # Date     : YYYY-MM-DD
 # =============================================================================
 # Description:

@@ -7,18 +7,21 @@
 # --- 0. Ensure renv is installed ---------------------------------------------
 if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
 
-# --- 1. Check and activate environment ---------------------------------------
+# Activate renv (usually already done via .Rprofile)
 message("Checking renv environment...")
 
-# If renv library missing, restore from lockfile
-if (!dir.exists("renv/library")) {
-  message("Restoring project environment from renv.lock ...")
+# Check if environment is out of sync or missing
+needs_restore <- tryCatch({
+  info <- renv::status()
+  !identical(info$synchronized, TRUE)
+}, error = function(e) TRUE)
+
+if (needs_restore) {
+  message("Environment out of sync — restoring from renv.lock ...")
   renv::restore(prompt = FALSE)
 } else {
-  message("renv environment already set up.")
+  message("renv environment up to date.")
 }
-
-# renv::activate() happens automatically via .Rprofile
 
 # --- 2. Load base helper packages --------------------------------------------
 library(purrr)
@@ -30,7 +33,7 @@ message(glue("\n===== Starting replication pipeline ====="))
 # --- 3. Helper to safely run scripts ------------------------------------------
 run_script <- function(file) {
   file_path <- here::here(file)
-  message(glue("\n---  Running: {file_path} ---"))
+  message(glue("\n--- Running: {file_path} ---"))
   tryCatch({
     source(file_path, echo = TRUE, max.deparse.length = Inf, local = new.env())
     message(glue("Completed: {file}"))
