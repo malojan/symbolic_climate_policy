@@ -1,0 +1,258 @@
+# =============================================================================
+# 01-study1-cleaning.R
+# Purpose  : Clean and recode the BEE dataset for replication of Study 1
+# Authors  : Malo Jan & Luis Sattelmayer
+# Date     : YYYY-MM-DD
+# =============================================================================
+# Description:
+# This script:
+#   1. Imports the raw data
+#   2. Recodes demographic and treatment variables
+#   3. Handles missing values
+#   4. Constructs a Climate Policy Support Index (PCA + clustering)
+#   5. Exports a cleaned dataset for analysis
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 0. Setup
+# -----------------------------------------------------------------------------
+
+library(tidyverse)
+library(here)
+library(FactoMineR)
+library(janitor)
+
+set.seed(1234)  # for reproducibility
+
+# -----------------------------------------------------------------------------
+# 1. Import raw data
+# CSV Data file has to be downloaded from: https://doi.org/10.21410/7E4/OH0RKI
+# -----------------------------------------------------------------------------
+
+bee <- read_csv2(here("data/raw/bee0_postprod_240124_110736.csv"))
+
+# -----------------------------------------------------------------------------
+# 2. Recode demographic and attitudinal variables
+# -----------------------------------------------------------------------------
+
+bee <- bee |>
+  mutate(
+    # Gender
+    gender = case_when(
+      eayy_a1 == 1 ~ "Male",
+      eayy_a1 == 2 ~ "Female",
+      TRUE ~ NA_character_
+    ) |> as.factor(),
+    
+    # Urban vs. rural (agglomeration size)
+    urban_rural_num = case_when(
+      cal_TUU == 0 ~ 0,
+      cal_TUU == 1 ~ 1,
+      cal_TUU == 4 ~ 2,
+      cal_TUU == 6 ~ 3,
+      cal_TUU == 8 ~ 4,
+      TRUE ~ NA_real_
+    ),
+    
+    # Education
+    education_cat = case_when(
+      cal_DIPL == 1 ~ "DIPL_SUP",
+      cal_DIPL == 2 ~ "BAC_BAC2",
+      cal_DIPL == 3 ~ "CAP_BEPC",
+      cal_DIPL == 4 ~ "NO",
+      TRUE ~ NA_character_
+    ),
+    
+    # Age (12 categories)
+    age_num_12 = case_when(
+      eayy_a2a_rec2 %in% 1:15 ~ eayy_a2a_rec2,
+      TRUE ~ NA_real_
+    ),
+    
+    # Income
+    income = case_when(
+      eayy_e2auc %in% 1:10 ~ eayy_e2auc,
+      TRUE ~ NA_real_
+    ),
+    
+    # Ideology (0–10 scale)
+    ideology = case_when(
+      eayy_i8 %in% 0:10 ~ eayy_i8,
+      TRUE ~ NA_real_
+    ),
+    
+    # Climate concern
+    climate_concern = case_when(
+      bee0_A13 %in% 1:5 ~ bee0_A13,
+      TRUE ~ NA_real_
+    ),
+    
+    # Government satisfaction (reverse-coded)
+    gov_sati_num = case_when(
+      bee0_B1 == 1 ~ 4,
+      bee0_B1 == 2 ~ 3,
+      bee0_B1 == 3 ~ 2,
+      bee0_B1 == 4 ~ 1,
+      TRUE ~ NA_real_
+    ),
+    
+    # Car as main transport
+    car_main_transport = case_when(
+      bee0_C31 == 1 ~ "Yes",
+      TRUE ~ "No"
+    ) |> as.factor(),
+    
+    # Flight use
+    flight_use = case_when(
+      bee0_C35 >= 1 ~ "Yes",
+      TRUE ~ "No"
+    ) |> as.factor()
+  )
+
+# -----------------------------------------------------------------------------
+# 3. Recode treatments and outcome variables
+# -----------------------------------------------------------------------------
+
+bee <- bee |>
+  mutate(
+    # --- Highway experiment ---
+    support_highway = case_when(
+      bee0_GRAC == 1 | bee0_GRA1 == 1 | bee0_GRA2 == 1 ~ "Totally agree",
+      bee0_GRAC == 2 | bee0_GRA1 == 2 | bee0_GRA2 == 2 ~ "Rather agree",
+      bee0_GRAC == 3 | bee0_GRA1 == 3 | bee0_GRA2 == 3 ~ "Rather disagree",
+      bee0_GRAC == 4 | bee0_GRA1 == 4 | bee0_GRA2 == 4 ~ "Totally disagree",
+      TRUE ~ NA_character_
+    ) |> fct_relevel("Totally disagree", "Rather disagree", "Rather agree", "Totally agree"),
+    
+    support_highway_num = case_when(
+      support_highway == "Totally agree" ~ 4,
+      support_highway == "Rather agree" ~ 3,
+      support_highway == "Rather disagree" ~ 2,
+      support_highway == "Totally disagree" ~ 1,
+      TRUE ~ NA_real_
+    ),
+    
+    treatment_highway = case_when(
+      bee0_GRAC != 6666 ~ "Control",
+      bee0_GRA1 != 6666 ~ "Ministers",
+      bee0_GRA2 != 6666 ~ "Rich",
+      TRUE ~ NA_character_
+    ) |> fct_relevel("Control", "Rich", "Ministers"),
+    
+    # --- Flights experiment ---
+    support_flights = case_when(
+      bee0_GRBC == 1 | bee0_GRB1 == 1 | bee0_GRB2 == 1 ~ "Totally agree",
+      bee0_GRBC == 2 | bee0_GRB1 == 2 | bee0_GRB2 == 2 ~ "Rather agree",
+      bee0_GRBC == 3 | bee0_GRB1 == 3 | bee0_GRB2 == 3 ~ "Rather disagree",
+      bee0_GRBC == 4 | bee0_GRB1 == 4 | bee0_GRB2 == 4 ~ "Totally disagree",
+      TRUE ~ NA_character_
+    ) |> fct_relevel("Totally disagree", "Rather disagree", "Rather agree", "Totally agree"),
+    
+    support_flights_num = case_when(
+      support_flights == "Totally agree" ~ 4,
+      support_flights == "Rather agree" ~ 3,
+      support_flights == "Rather disagree" ~ 2,
+      support_flights == "Totally disagree" ~ 1,
+      TRUE ~ NA_real_
+    ),
+    
+    treatment_flights = case_when(
+      bee0_GRBC != 6666 ~ "Control",
+      bee0_GRB1 != 6666 ~ "Ministers",
+      bee0_GRB2 != 6666 ~ "Rich",
+      TRUE ~ NA_character_
+    ) |> fct_relevel("Control", "Rich", "Ministers")
+  )
+
+# -----------------------------------------------------------------------------
+# 4. Handle missing values (mean imputation for continuous variables)
+# -----------------------------------------------------------------------------
+
+bee <- bee |>
+  mutate(across(
+    c(income, ideology, gov_sati_num, climate_concern),
+    ~ if_else(is.na(.x), mean(.x, na.rm = TRUE), .x)
+  ))
+
+# -----------------------------------------------------------------------------
+# 5. Construct Climate Policy Support Index (PCA + clustering)
+# -----------------------------------------------------------------------------
+# Create wide-format dataset of climate policy support items (numeric only)
+
+cp_data <- bee |> 
+  select(bee0_B9:bee0_B19) |> 
+  pivot_longer(cols = bee0_B9:bee0_B19, names_to = "issue_policy", values_to = "support") |> 
+  mutate(issue_policy = case_when(
+    issue_policy == "bee0_B9" ~ "car_city_center",
+    issue_policy == "bee0_B10" ~ "tax_fossil",
+    issue_policy == "bee0_B11" ~ "renov",
+    issue_policy == "bee0_B12" ~ "nuc",
+    issue_policy == "bee0_B13" ~ "tax_flights",
+    issue_policy == "bee0_B14" ~ "wind",
+    issue_policy == "bee0_B15" ~ "car_new",
+    issue_policy == "bee0_B16" ~ "buildings",
+    issue_policy == "bee0_B17" ~ "norm_agri",
+    issue_policy == "bee0_B18" ~ "vege",
+    issue_policy == "bee0_B19" ~ "transport_sub"
+  ), 
+  support = case_when(
+    support == "9999" ~ NA_real_,
+    .default = support
+  )) |> 
+  pivot_wider(names_from = "issue_policy", values_from = "support") |> 
+  unnest() |> 
+  select(- nuc) |> 
+  # Rename all columns by adding cp_ before
+  rename_with(~ paste0("cp_", .)) |> 
+  bind_cols(bee) |> 
+  select(starts_with("cp_"))
+
+# Principal Component Analysis (PCA)
+cp_pca <- FactoMineR::PCA(cp_data, scale.unit = TRUE, graph = FALSE)
+
+# Hierarchical clustering on principal components
+hcpc <- FactoMineR::HCPC(cp_pca, graph = FALSE)
+
+# Extract PCA coordinates and cluster assignments
+cp_coords <- cp_pca$ind$coord |>
+  as_tibble() |>
+  clean_names() |>
+  select(dim_1, dim_2) |>
+  bind_cols(cp_data) |>
+  bind_cols(as_tibble(hcpc$data.clust["clust"])) |>
+  mutate(
+    cp_index  = dim_1,
+    cp_index2 = dim_2,
+    cp_cluster = case_when(
+      clust == 1 ~ "Pro-climate policy",
+      clust == 2 ~ "Moderate climate policy",
+      clust == 3 ~ "Anti-climate policy",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Add climate policy index and clusters to main dataset
+bee <- bind_cols(bee, cp_coords)
+
+# -----------------------------------------------------------------------------
+# 6. Select analysis variables
+# -----------------------------------------------------------------------------
+
+bee <- bee |>
+  select(
+    support_highway_num, treatment_highway,
+    support_flights_num, treatment_flights,
+    ideology, gov_sati_num, gender, income, age_num_12,
+    education_cat, urban_rural_num, car_main_transport, flight_use,
+    climate_concern, cp_index, cp_cluster, POIDS_bee0
+  )
+
+# -----------------------------------------------------------------------------
+# 7. Export cleaned dataset
+# -----------------------------------------------------------------------------
+
+output_path <- here("data/processed/data-study-01-clean.rds")
+write_rds(bee, output_path)
+
+message(glue::glue("Cleaned Study 1 dataset saved to {output_path}"))
+
