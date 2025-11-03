@@ -22,14 +22,22 @@ library(here)
 library(FactoMineR)
 library(janitor)
 
-set.seed(1234)  # for reproducibility
+# --- 1. Import raw data -------------------------------------------------------
+# The CSV file must be manually downloaded from data.sciencespo.fr
+# DOI: https://doi.org/10.21410/7E4/OH0RKI
+# and placed in data/raw/
 
-# -----------------------------------------------------------------------------
-# 1. Import raw data
-# CSV Data file has to be asked and downloaded from data.sciencespo: https://doi.org/10.21410/7E4/OH0RKI
-# -----------------------------------------------------------------------------
+raw_file <- here("data/raw/fr_cdsp_ddi_elipss_202312_bee.csv")
 
-bee <- read_csv(here("data/raw/fr_cdsp_ddi_elipss_202312_bee.csv"))
+if (!file.exists(raw_file)) {
+  stop(glue::glue(
+    "Data file not found: {raw_file}\n",
+    "Please download it from https://doi.org/10.21410/7E4/OH0RKI ",
+    "and place it in the 'data/raw/' folder."
+  ))
+}
+
+bee <- read_csv(raw_file)
 
 # -----------------------------------------------------------------------------
 # 2. Recode demographic and attitudinal variables
@@ -110,9 +118,7 @@ bee <- bee |>
     POIDS_bee0 = str_replace(POIDS_bee0, ",", ".") |> as.numeric()
   )
 
-# -----------------------------------------------------------------------------
-# 3. Recode treatments and outcome variables
-# -----------------------------------------------------------------------------
+# --- 3. Recode treatments and outcome variables -------------------------------
 
 bee <- bee |>
   mutate(
@@ -165,9 +171,7 @@ bee <- bee |>
     ) |> fct_relevel("Control", "Rich", "Ministers")
   )
 
-# -----------------------------------------------------------------------------
-# 4. Handle missing values (mean imputation for continuous variables)
-# -----------------------------------------------------------------------------
+# --- 4. Handle missing values -------------------------------------------------
 
 bee <- bee |>
   mutate(across(
@@ -175,10 +179,9 @@ bee <- bee |>
     ~ if_else(is.na(.x), mean(.x, na.rm = TRUE), .x)
   ))
 
-# -----------------------------------------------------------------------------
-# 5. Construct Climate Policy Support Index (PCA + clustering)
-# -----------------------------------------------------------------------------
-# Create wide-format dataset of climate policy support items (numeric only)
+# --- 5. Construct Climate Policy Support Index (PCA + clustering) ------------
+
+# Extract climate policy support items
 
 cp_data <- bee |> 
   select(bee0_B9:bee0_B19) |> 
@@ -235,9 +238,7 @@ cp_coords <- cp_pca$ind$coord |>
 # Add climate policy index and clusters to main dataset
 bee <- bind_cols(bee, cp_coords)
 
-# -----------------------------------------------------------------------------
-# 6. Select analysis variables
-# -----------------------------------------------------------------------------
+# --- 6. Select final analysis variables --------------------------------------
 
 bee <- bee |>
   select(
@@ -248,9 +249,7 @@ bee <- bee |>
     climate_concern, cp_index, cp_cluster, POIDS_bee0
   )
 
-# -----------------------------------------------------------------------------
-# 7. Export cleaned dataset
-# -----------------------------------------------------------------------------
+# --- 7. Export cleaned dataset -----------------------------------------------
 
 output_path <- here("data/processed/data-study-01-clean.rds")
 write_rds(bee, output_path)

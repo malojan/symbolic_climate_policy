@@ -1,30 +1,46 @@
 # =============================================================================
 # 02-study1-analysis.R
-# Purpose  : Code analysis for Study 1 (models, tables, and figures)
-# Authors  : Malo Jan & Luis Sattelmayer
-# Date     : YYYY-MM-DD
+# Purpose   : Analysis for Study 1 (OLS models, tables, and figures)
+# Authors   : Malo Jan & Luis Sattelmayer
+# -----------------------------------------------------------------------------
+# Description:
+# This script reproduces the analysis for Study 1:
+#   1. Imports the cleaned dataset produced by 01-study1-cleaning.R
+#   2. Runs OLS models (baseline + controls)
+#   3. Produces regression tables and plots of estimated effects
+#   4. Tests interaction effects with behavior, ideology, and policy attitudes
+#   5. Saves all tables and figures under outputs/
+# Dependencies:
+#   tidyverse, stargazer, broom, ggeffects
 # =============================================================================
 
 library(tidyverse)
 library(stargazer)
 library(broom)
 library(ggeffects)
+library(here)
 
 # -----------------------------------------------------------------------------
 # 0. Import data
 # -----------------------------------------------------------------------------
 
-bee_clean <- read_rds("data/processed/data-study-01-clean.rds")
+input_file <- here("data/processed/data-study-01-clean.rds")
 
-# make sure output folders exist 
-dir.create("outputs", showWarnings = FALSE)
-dir.create("outputs/tables", showWarnings = FALSE)
-dir.create("outputs/figures", showWarnings = FALSE)
+if (!file.exists(input_file)) {
+  stop(glue::glue(
+    "Data file not found: {input_file}\n",
+    "Please run 01-study1-cleaning.R first to generate it."
+  ))
+}
 
+bee_clean <- read_rds(input_file)
 
-# -----------------------------------------------------------------------------
-# 1. Prepare per-experiment datasets 
-# -----------------------------------------------------------------------------
+# Ensure output folders exist
+dir.create(here("outputs/tables"), recursive = TRUE, showWarnings = FALSE)
+dir.create(here("outputs/figures"), recursive = TRUE, showWarnings = FALSE)
+
+# --- 1. Prepare per-experiment datasets --------------------------------------
+# Helper: rename treatment/support and label experiment
 
 prep_data <- function(data, treatment_col, support_col, experiment_name) {
   data |>
@@ -35,145 +51,95 @@ prep_data <- function(data, treatment_col, support_col, experiment_name) {
     mutate(experiment = experiment_name)
 }
 
-bee_highway <- prep_data(bee_clean, treatment_highway,  support_highway_num, "highway")
-bee_flight  <- prep_data(bee_clean, treatment_flights,  support_flights_num, "flights")
+bee_highway <- prep_data(bee_clean, treatment_highway, support_highway_num, "highway")
+bee_flight  <- prep_data(bee_clean, treatment_flights, support_flights_num, "flights")
 
-# -----------------------------------------------------------------------------
-# 2. OLS models
-# -----------------------------------------------------------------------------
+# --- 2. OLS models ------------------------------------------------------------
 
 # Treatment-only
-ols_highway_t_only <- lm(
-  support ~ treatment,
-  data    = bee_highway,
-  weights = POIDS_bee0
-)
+ols_highway_t_only <- lm(support ~ treatment, data = bee_highway, weights = POIDS_bee0)
+ols_flight_t_only  <- lm(support ~ treatment, data = bee_flight,  weights = POIDS_bee0)
 
-ols_flight_t_only <- lm(
-  support ~ treatment,
-  data    = bee_flight,
-  weights = POIDS_bee0
-)
-
-# Full controls
+# With full controls
 ols_highway <- lm(
   support ~ treatment + ideology + gov_sati_num + gender + income + age_num_12 +
     education_cat + urban_rural_num + car_main_transport + climate_concern,
-  data    = bee_highway,
-  weights = POIDS_bee0
+  data = bee_highway, weights = POIDS_bee0
 )
 
 ols_flight <- lm(
   support ~ treatment + ideology + gov_sati_num + gender + income + age_num_12 +
     education_cat + urban_rural_num + flight_use + climate_concern,
-  data    = bee_flight,
-  weights = POIDS_bee0
+  data = bee_flight, weights = POIDS_bee0
 )
 
-# -----------------------------------------------------------------------------
-# 3. Table: OLS 
-# -----------------------------------------------------------------------------
+# --- 3. Regression Table: OLS -------------------------------------------------
 
-model_list <- list(ols_highway_t_only, ols_highway, ols_flight, ols_flight)
+model_list <- list(ols_highway_t_only, ols_highway, ols_flight_t_only, ols_flight)
 
 stargazer(
   model_list,
-  type            = "html",
-  single.row      = TRUE,
-  font.size       = "small",
-  digits          = 2,
-  title           = "OLS models : Control only and control + treatment",
-  column.labels   = c("", "", "", ""),
-  column.sep.width= "1pt",
-  dep.var.labels  = c("Speed limit highway", "Ban air travel"),
+  type             = "html",
+  single.row       = TRUE,
+  font.size        = "small",
+  digits           = 2,
+  title            = "OLS models: Control only and with full controls",
+  column.labels    = c("", "", "", ""),
+  column.sep.width = "1pt",
+  dep.var.labels   = c("Speed limit highway", "Ban air travel"),
   covariate.labels = c(
-    "T- Symbolic minister",
-    "T- Symbolic Rich",
-    "Ideology",
-    "Government satisfaction",
-    "Gender - Male",
-    "Income",
-    "Age",
-    "Education - CAP/BEPC",
-    "Education - DIPL-SUP",
-    "Education - NO",
-    "Urban - Rural",
-    "Main transport - Car",
-    "Flight use",
-    "Climate concern"
+    "T- Symbolic minister", "T- Symbolic Rich", "Ideology",
+    "Government satisfaction", "Gender - Male", "Income", "Age",
+    "Education - CAP/BEPC", "Education - DIPL-SUP", "Education - NO",
+    "Urban - Rural", "Main transport - Car", "Flight use", "Climate concern"
   ),
-  ci          = FALSE,
-  ci.level    = 0.95,
-  flip        = TRUE,
-  star.cutoffs= c(0.05, 0.01, 0.001),
-  omit.stat   = c("f", "ser"),
-  out         = "outputs/tables/ols_models.tex"
+  star.cutoffs     = c(0.05, 0.01, 0.001),
+  omit.stat        = c("f", "ser"),
+  out              = here("outputs/tables/ols_models.tex")
 )
 
-
-# -----------------------------------------------------------------------------
-# 4. Coefficient extraction for ATE plot
-# -----------------------------------------------------------------------------
+# --- 4. Coefficient extraction for ATE plot -----------------------------------
 
 ols_coefficients <- bind_rows(
-  tidy(ols_highway, conf.int = TRUE, conf.level = 0.95) |> mutate(symbolic = "highway"),
-  tidy(ols_flight,  conf.int = TRUE, conf.level = 0.95) |> mutate(symbolic = "flights")
+  tidy(ols_highway, conf.int = TRUE) |> mutate(symbolic = "highway"),
+  tidy(ols_flight,  conf.int = TRUE) |> mutate(symbolic = "flights")
 ) |>
   mutate(
     term = case_when(
       str_detect(term, "Ministers") ~ "Symbolic targeting ministers",
-      str_detect(term, "Rich")  ~ "Symbolic targeting rich",
-      .default = term
+      str_detect(term, "Rich")      ~ "Symbolic targeting rich",
+      TRUE                          ~ term
     )
   )
 
-# -----------------------------------------------------------------------------
-# 5. Figure 1 – ATE plot
-# -----------------------------------------------------------------------------
+# --- 5. Figure 1 – ATE Plot ---------------------------------------------------
 
-ols_coefficients |>
-  filter(
-    term != "(Intercept)",
-    term %in% c("Symbolic targeting rich", "Symbolic targeting ministers")
-  ) |>
-  mutate(
-    significance = case_when(
-      p.value < 0.001 ~ "***",
-      p.value < 0.01  ~ "**",
-      p.value < 0.05  ~ "*",
-      p.value < 0.1   ~ ".",
-      TRUE            ~ ""
-    )
-  ) |>
-  ggplot(aes(estimate, symbolic, color = term, group = term)) +
+fig1 <- ols_coefficients |>
+  filter(term %in% c("Symbolic targeting rich", "Symbolic targeting ministers")) |>
+  ggplot(aes(estimate, symbolic, color = term)) +
   geom_pointrange(aes(xmin = conf.low, xmax = conf.high),
                   position = position_dodge(width = 0.5)) +
   geom_label(
-    aes(label = paste(sprintf("%.2f", estimate), significance)),
+    aes(label = paste0(sprintf("%.2f", estimate))),
     vjust = -2, hjust = 0, size = 3,
     position = position_dodge(width = 0.5)
   ) +
-  geom_hline(yintercept = 0, linetype = "dashed") +   # kept exactly
+  geom_vline(xintercept = 0, linetype = "dashed") +
   theme_light() +
   scale_color_grey("Treatment") +
-  scale_x_continuous("ATE on policy support") +
-  theme(legend.position = "bottom",
-        legend.key.height = unit(1, "cm")) +
-  scale_y_discrete("",
-                   labels = c(
-                     "Ban flights if train alternative less 5h",
-                     "Limit highway speed to 110 km/h"
-                   )
-  )
+  scale_x_continuous("Average Treatment Effect (ATE)") +
+  theme(legend.position = "bottom") +
+  scale_y_discrete("", labels = c(
+    "Ban flights if train alternative < 5h",
+    "Limit highway speed to 110 km/h"
+  ))
 
-ggsave(
-  "outputs/figures/figure-01.png")
+ggsave(here("outputs/figures/figure-01.png"), fig1)
 
-# -----------------------------------------------------------------------------
-# 6. Figure 2 – Distribution of support 
-# -----------------------------------------------------------------------------
 
-bind_rows(bee_highway, bee_flight) |>
+# --- 6. Figure 2 – Distribution of support -----------------------------------
+
+fig2 <- bind_rows(bee_highway, bee_flight) |>
   group_by(experiment, treatment) |>
   count(support, wt = POIDS_bee0) |>
   drop_na() |>
@@ -209,11 +175,9 @@ bind_rows(bee_highway, bee_flight) |>
         axis.text.x = element_text(angle = 45, hjust = 1)) +
   coord_flip()
 
-ggsave("outputs/figures/figure-02.png")
+ggsave(here("outputs/figures/figure-02.png"), fig2)
 
-# -----------------------------------------------------------------------------
-# 7. Interaction models 
-# -----------------------------------------------------------------------------
+# --- 7. Interaction Models ----------------------------------------------------
 
 ## 7.1 Interaction with behavior
 ols_highway_int_behavior <- lm(
@@ -373,9 +337,7 @@ stargazer(
   out          = "outputs/tables/ols_models_int_policy.tex"
 )
 
-# -----------------------------------------------------------------------------
-# 8. Predicted values plots for interactions
-# -----------------------------------------------------------------------------
+# 8. Predicted values plots for interactions --------------------------------
 
 ## 8.1 Interaction with behavior
 predictions_ols_int_behavior <- ggpredict(
@@ -462,6 +424,7 @@ bind_rows(
   facet_wrap(~policy, scales = "free")
 
 ## 8.3 Interaction with policy support cluster
+
 predictions_ols_int_policy_support <- ggpredict(
   ols_highway_int_policy_support, terms = c("treatment", "cp_cluster")
 ) |>
@@ -502,3 +465,5 @@ bind_rows(
   theme(legend.position = "bottom") +
   facet_wrap(~policy) +
   coord_flip()
+
+

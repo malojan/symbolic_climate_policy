@@ -1,7 +1,15 @@
 # =============================================================================
 # run_all.R
-# Purpose : Master script to reproduce all analyses (replication version)
-# Author  : Malo JAN
+# Purpose   : Master script to reproduce all analyses (replication version)
+# Author    : Malo JAN
+# -----------------------------------------------------------------------------
+# Description:
+# This script executes all data cleaning and analysis scripts in order to
+# reproduce the results of the project. It automatically:
+#   1. Ensures that the R environment is restored via renv.
+#   2. Runs each R script under code/, in sequence.
+#   3. Logs any errors to outputs/logs/run_all_errors_<timestamp>.log.
+#   4. Stops if required data are missing.
 # =============================================================================
 
 # --- 0. Ensure renv is installed ---------------------------------------------
@@ -30,24 +38,24 @@ library(here)
 message("\n===== Starting replication pipeline =====")
 
 # --- 3. Prepare error log file -----------------------------------------------
-log_file <- here::here("outputs/logs/run_all_errors.log")
+timestamp <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
+log_file  <- here::here(glue("outputs/logs/run_all_errors_{timestamp}.log"))
 if (!dir.exists(dirname(log_file))) dir.create(dirname(log_file), recursive = TRUE)
-if (file.exists(log_file)) file.remove(log_file)
 
-# Helper to append to the log file (portable version)
+# Helper: append a timestamped error message to the log file (portable version)
 append_error <- function(text) {
   con <- file(log_file, open = "a")
   writeLines(text, con)
   close(con)
 }
 
-# --- 4. Function to run each script safely -----------------------------------
+# --- 4. Safely run a script and handle errors --------------------------------
 run_script <- function(file) {
   file_path <- here::here(file)
   message(glue("\n--- Running: {file_path} ---"))
   
   tryCatch({
-    # Ensure Study 1 data exists before running cleaning
+    # (a) Check required data for Study 1 cleaning
     if (grepl("01-study-01-cleaning\\.R$", file)) {
       raw_data <- here::here("data/raw/fr_cdsp_ddi_elipss_202312_bee.csv")
       if (!file.exists(raw_data)) {
@@ -59,11 +67,15 @@ run_script <- function(file) {
       }
     }
     
+    # (b) Execute script in an isolated environment
     source(file_path, echo = TRUE, max.deparse.length = Inf, local = new.env())
+    
+    # (c) Success feedback
     message(glue("Completed: {file}"))
     TRUE
     
   }, error = function(e) {
+    # Log error with timestamp
     msg <- glue("[{format(Sys.time(), '%Y-%m-%d %H:%M:%S')}] Error in {file}: {e$message}")
     message(msg)
     append_error(msg)
@@ -82,11 +94,12 @@ scripts <- c(
 # --- 6. Execute all scripts ---------------------------------------------------
 results <- purrr::map_lgl(scripts, run_script)
 
-# --- 7. Summary ---------------------------------------------------------------
+# --- 7. Summarize results -----------------------------------------------------
 n_success <- sum(results)
 n_total   <- length(results)
 
-message(glue("\n===== Replication pipeline finished ({n_success}/{n_total} scripts ran successfully) ====="))
+message("\n------------------------------------------")
+message(glue("===== Replication pipeline finished ({n_success}/{n_total} scripts ran successfully) ====="))
 
 if (n_success < n_total) {
   message(glue("Some scripts failed. Check log: {log_file}"))
