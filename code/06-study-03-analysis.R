@@ -1,11 +1,41 @@
 # =============================================================================
-# 04-study-03-analysis.R
-# Purpose  : Analysis for Study 3 (OLS models, tables, and figures)
-# Authors  : Malo Jan & Luis Sattelmayer
-# Date     : YYYY-MM-DD
+# 06-study-03-analysis.R
+# -----------------------------------------------------------------------------
+# Purpose   : Estimate OLS models and visualize treatment effects for Study 3
+# Authors   : Malo Jan & Luis Sattelmayer
+# =============================================================================
+# Description:
+#   This script performs the full analytical workflow for Study 3:
+#     0. Loads required R packages
+#     1. Imports the cleaned dataset produced in 04-study-03-cleaning.R
+#     2. Prepares harmonized datasets for both experimental conditions
+#        (Highway Speed Limit and Carbon Tax)
+#     3. Defines model specifications (treatment-only and with controls)
+#     4. Estimates OLS models efficiently across all outcomes
+#     5. Exports formatted regression tables (LaTeX format for Appendix)
+#     6. Extracts and saves standardized model coefficients
+#     7. Visualizes treatment effects across all key outcomes (Figures 3–5)
+# Inputs:
+#   - data/processed/data-study-03-clean.rds
+#
+# Outputs:
+#   - data/processed/study-03-ols-coefficients.rds
+#   - outputs/tables/appendix-tbl-08.tex
+#   - outputs/tables/appendix-tbl-09.tex
+#   - outputs/tables/appendix-tbl-10.tex
+#   - outputs/tables/appendix-tbl-11.tex
+#   - outputs/tables/appendix-tbl-12.tex
+#   - outputs/figures/figure-03.pdf
+#   - outputs/figures/figure-04.pdf
+#   - outputs/figures/figure-05.pdf
+#
+# Dependencies:
+#   tidyverse, stargazer, broom, ggeffects, scales, here
 # =============================================================================
 
-# --- Libraries ---------------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 0. Load libraries
+# -----------------------------------------------------------------------------
 
 library(tidyverse)
 library(stargazer)
@@ -14,10 +44,15 @@ library(ggeffects)
 library(scales)
 library(here)
 
-# --- 0. Import data -----------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 1. Import cleaned data
+# -----------------------------------------------------------------------------
+
 data <- read_rds("data/processed/study-03-clean-data.rds")
 
-# --- 1. Prepare per-experiment datasets --------------------------------------
+# ----------------------------------------------------------------------------- 
+# 2. Prepare per-experiment datasets
+# -----------------------------------------------------------------------------
 
 prep_data <- function(data, treatment_col, support_col, justice_col,
                       effective_col, seriousness_col, elite_col, experiment_name) {
@@ -40,6 +75,8 @@ prep_data <- function(data, treatment_col, support_col, justice_col,
     )
 }
 
+# --- Create datasets for each experimental condition -------------------------
+
 data_highway <- prep_data(
   data,
   treatment_highway, support_highway, justice_highway,
@@ -54,7 +91,9 @@ data_carbon_tax <- prep_data(
   "carbon_tax"
 )
 
-# Standard deviation control group
+# ----------------------------------------------------------------------------- 
+# 3. Compute control-group standard deviations
+# -----------------------------------------------------------------------------
 
 sd_control_highway <- data_highway |> 
   filter(treatment == "Control") |> 
@@ -75,7 +114,12 @@ sd_control_carbon <- data_carbon_tax |>
 datasets <- list(highway = data_highway, carbon_tax = data_carbon_tax)
 outcomes <- c("support", "justice", "effective", "seriousness", "elite")
 
-# --- 2. Model setup -----------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 4. Define model specifications
+# -----------------------------------------------------------------------------
+# Two model types are estimated:
+#   (a) Treatment-only model
+#   (b) Model with demographic and attitudinal controls
 
 controls <- c(
   "ideology", "gov_sati", "gender", "income", "age_num",
@@ -94,8 +138,8 @@ run_ols_with_controls <- function(df, outcome) {
 }
 
 
-# -----------------------------------------------------------------------------
-# 4. Estimate both types efficiently
+# ----------------------------------------------------------------------------- 
+# 5. Estimate models across experiments and outcomes
 # -----------------------------------------------------------------------------
 
 ols_models <- expand_grid(
@@ -115,9 +159,17 @@ ols_models <- expand_grid(
   )
 
 
-# --- 4. Helper for Stargazer tables (fixed) ----------------------------------
-# dep_var_label  : single string for the DV name shown in the table (e.g., "Support")
-# group_labels   : vector of group labels for the experiments (e.g., c("Speed limit highway","Carbon tax"))
+# ----------------------------------------------------------------------------- 
+# 6. Helper function: Stargazer export for regression tables
+# -----------------------------------------------------------------------------
+# Arguments:
+#   - df: dataframe of OLS models
+#   - outcome: dependent variable name
+#   - dep_var_label: displayed label for DV
+#   - group_labels: column labels for experiments
+#   - file_name: output .tex file path
+# -----------------------------------------------------------------------------
+
 save_stargazer <- function(df, outcome, dep_var_label, group_labels, file_name, title = NULL) {
   
   # keep models in a stable order: experiment, then model_type
@@ -167,10 +219,10 @@ save_stargazer <- function(df, outcome, dep_var_label, group_labels, file_name, 
   )
 }
 
-# --- 5. Export tables ---------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 7. Export regression tables
+# -----------------------------------------------------------------------------
 
-
-# --- 5. Automated export of all Study 3 tables -------------------------------
 table_specs <- tribble(
   ~outcome,      ~dep_var_label,         ~title,                                      ~file,
   "support",     "Support",               "OLS models Study 3 : Policy support",       "outputs/tables/appendix-tbl-08.tex",
@@ -196,10 +248,8 @@ pwalk(
 )
 
 
-# Extract model coefficients
-
-# -----------------------------------------------------------------------------
-# 5. Tidy and label results
+# ----------------------------------------------------------------------------- 
+# 8. Extract and save tidy model coefficients
 # -----------------------------------------------------------------------------
 
 model_coefficients <- ols_models |>
@@ -215,11 +265,13 @@ write_rds(
   here("data/processed/study-03-ols-coefficients.rds")
 )
 
-# --- 7. Figures ---------------------------------------------------------------
+# ----------------------------------------------------------------------------- 
+# 9. Visualization: Treatment Effects
+# -----------------------------------------------------------------------------
 
 ## Figure 3 - Treatment effects on support for highway speed limit 
 
-model_coefficients   |> 
+model_coefficients   |>
   filter(
     str_detect(term, "treatment"),
     model_type == "with_controls",
@@ -244,7 +296,7 @@ model_coefficients   |>
     term = str_remove(term, "treatment") |>
       fct_relevel(c("Symbolic No Costly", "Pure Symbolic", "Costly + Symbolic", "Costly No Symbolic"))
   ) |>
-  ggplot(aes(x = term, y = estimate_standardized, color = term)) +
+  ggplot(aes(x = term, y = estimate_standardized)) +
   geom_point(position = position_dodge(width = 0.6), size = 3) +
   geom_crossbar(
     aes(ymin = conf_low_standardized, ymax = conf_high_standardized),
@@ -263,16 +315,7 @@ model_coefficients   |>
     fill = alpha("white", 0.7)
   )  +
   coord_flip(ylim = c(-10, 80)) +
-  scale_color_manual(
-    "Treatment",
-    values = c(
-      "Symbolic No Costly" = "#7f7f7f",   # grey baseline
-      "Pure Symbolic" = "#1b9e77",        # green (matches Fig 1)
-      "Costly + Symbolic" = "#d95f02",    # orange (matches Fig 1)
-      "Costly No Symbolic" = "#7570b3"    # purple, distinct
-    ),
-    guide = "none"
-  ) +
+  
   scale_y_continuous(
     name = "Change in outcome (% of full 1–4 scale range)",
     labels = label_percent(scale = 1, accuracy = 1),
@@ -325,7 +368,7 @@ model_coefficients   |>
     term = str_remove(term, "treatment") |>
       fct_relevel(c("Symbolic No Costly", "Pure Symbolic", "Costly + Symbolic", "Costly No Symbolic"))
   ) |>
-  ggplot(aes(x = term, y = estimate_standardized, color = term)) +
+  ggplot(aes(x = term, y = estimate_standardized)) +
   geom_point(position = position_dodge(width = 0.6), size = 3) +
   geom_crossbar(
     aes(ymin = conf_low_standardized, ymax = conf_high_standardized),
@@ -344,16 +387,6 @@ model_coefficients   |>
     fill = alpha("white", 0.7)
   )  +
   coord_flip(ylim = c(0, 80)) +
-  scale_color_manual(
-    "Treatment",
-    values = c(
-      "Symbolic No Costly" = "#7f7f7f",   # grey baseline
-      "Pure Symbolic" = "#1b9e77",        # green (matches Fig 1)
-      "Costly + Symbolic" = "#d95f02",    # orange (matches Fig 1)
-      "Costly No Symbolic" = "#7570b3"    # purple, distinct
-    ),
-    guide = "none"
-  ) +
   scale_y_continuous(
     name = "Change in outcome (% of full 1–4 scale range)",
     labels = label_percent(scale = 1, accuracy = 1),
@@ -373,7 +406,7 @@ model_coefficients   |>
     axis.text.y = element_text(size = 9),
     axis.title.y = element_text(size = 10, margin = margin(t = 10)),
     axis.title.x = element_text(size = 10, margin = margin(t = 10))  # smaller x-axis title
-  )
+  ) 
 
 ggsave("outputs/figures/figure-04.pdf")
 
@@ -420,7 +453,7 @@ model_coefficients |>
   geom_hline(yintercept = 0, linetype = "dashed", color = "grey60") +
   geom_text(
     aes(label = paste0(sprintf("%.1f", estimate_standardized), "%", significance)),
-    vjust = -0.2, hjust = -0.75, size = 2,
+    vjust = -0.1, hjust = -0.8, size = 2.3,
     label.size = 0,
     fill = alpha("white", 0.7),
     position = position_dodge(width = 1),
@@ -428,16 +461,11 @@ model_coefficients |>
     
   ) +
   coord_flip(ylim = c(-10, 50)) +
-  scale_color_manual(
-    "Treatment",
-    values = c(
-      "carbon_tax" = "#1b9e77",       # green
-      "highway" = "#d95f02"   # orange
-    ),
-    labels = c(
-      "Carbon Tax",
-      "Highway Speed Limit"
-    )
+  scale_color_grey(
+    name = "Treatment",
+    labels = c("Carbon Tax", "Highway Speed Limit"),
+    start = 0.1,  # darker start
+    end = 0.6     # darker end
   ) +
   scale_y_continuous(
     "Change in outcome (% of full 1–4 scale range)",
@@ -461,6 +489,7 @@ model_coefficients |>
     axis.title.y = element_text(size = 10, margin = margin(r = 10)),
     axis.title.x = element_text(size = 10, margin = margin(t = 10))
   )
+
 
 ggsave("outputs/figures/figure-05.pdf")
 

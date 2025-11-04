@@ -1,17 +1,28 @@
 # =============================================================================
-# 03-study-03-cleaning.R
-# Purpose  : Clean and recode the dataset for replication of Study 3
-# Authors  : Malo Jan & Luis Sattelmayer
-# Date     : YYYY-MM-DD
+# 04-study-03-cleaning.R
+# -----------------------------------------------------------------------------
+# Purpose   : Clean and recode the dataset for replication of Study 3
+# Authors   : Malo Jan & Luis Sattelmayer
 # =============================================================================
 # Description:
-# This script:
-#   1. Imports the raw data
-#   2. Recodes demographic variables
-#   3. Recodes treatment and outcome variables
-#   4. Handle missing values
-#   5. Exports a cleaned dataset for analysis
+#   This script prepares the dataset for Study 3 by:
+#     1. Importing the raw sav data
+#     2. Recoding demographic and attitudinal variables
+#     3. Recoding treatment and outcome variables
+#     4. Handling missing values (mean imputation for continuous variables)
+#     5. Selecting analysis-relevant variables
+#     6. Exporting a cleaned dataset for downstream analysis
+#
+# Inputs:
+#   - data/raw/study-03-data-raw.sav
+#
+# Outputs:
+#   - data/processed/data-study-03-clean.rds
+#
+# Dependencies:
+#   haven, tidyverse, here, glue
 # =============================================================================
+
 
 # -----------------------------------------------------------------------------
 # 0. Setup

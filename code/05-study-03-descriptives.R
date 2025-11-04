@@ -1,24 +1,55 @@
 # =============================================================================
-# 05-study-03-descriptive.R
-# Purpose  : Plot descriptive figures for appendix
-# Authors  : Malo Jan
+# 05-study-03-descriptives.R
+# -----------------------------------------------------------------------------
+# Purpose   : Plot descriptive figures for Appendix of Study 3
+# Authors   : Malo Jan & Luis Sattelmayer
 # =============================================================================
 # Description:
-# This script:
-#   1. Imports the cleaned Study 3 dataset
-#   2. Plots descriptive figures for appendix
+#   This script produces descriptive statistics and plots for Study 3,
+#   replicating Appendix figures. It:
+#     1. Imports the cleaned Study 3 dataset
+#     2. Plots key sociodemographic and attitudinal distributions
+#     3. Saves figures in PDF format under `outputs/figures/`
+#
+# Inputs:
+#   - data/processed/data-study-03-clean.rds
+#
+# Outputs:
+#   - outputs/figures/appendix-figure-17.pdf
+#   - outputs/figures/appendix-figure-18.pdf
+#   - outputs/figures/appendix-figure-19.pdf
+#   - outputs/figures/appendix-figure-20.pdf
+#   - outputs/figures/appendix-figure-21.pdf
+#   - outputs/figures/appendix-figure-22.pdf
+#   - outputs/figures/appendix-figure-23.pdf
+#   - outputs/figures/appendix-figure-24.pdf
+#   - outputs/figures/appendix-figure-25.pdf
+#
+# Dependencies:
+#   tidyverse, here, scales
 # =============================================================================
 
-# 0. Setup-------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# 0. Setup
+# -----------------------------------------------------------------------------
 
 
 library(tidyverse)
 library(here)
+library(scales)
 
 
-# Load cleaned data
+# -----------------------------------------------------------------------------
+# 1. Load cleaned Study 3 data
+# -----------------------------------------------------------------------------
 
 data <- read_rds(here("data/processed/study-03-clean-data.rds"))
+
+
+# -----------------------------------------------------------------------------
+# 2. Ideology distribution
+# -----------------------------------------------------------------------------
 
 
 data |> 
@@ -37,6 +68,11 @@ data |>
 ggsave(
   filename = here("outputs/figures/appendix-figure-17.png"))
 
+# -----------------------------------------------------------------------------
+# 3. Government satisfaction
+# -----------------------------------------------------------------------------
+
+
 data |> 
   mutate(gov_sati = gov_sati *-1 + 5) |> 
   ggplot() +
@@ -46,9 +82,13 @@ data |>
   theme_light() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-
 ggsave(
   filename = here("outputs/figures/appendix-figure-18.png"))
+
+# -----------------------------------------------------------------------------
+# 4. Gender distribution
+# -----------------------------------------------------------------------------
+
 
 data |> 
   ggplot() +
@@ -58,9 +98,13 @@ data |>
   theme_light() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-
 ggsave(
   filename = here("outputs/figures/appendix-figure-19.png"))
+
+# -----------------------------------------------------------------------------
+# 5. Education level
+# -----------------------------------------------------------------------------
+
 data |> 
   mutate(
     education_cat = fct_relevel(education_cat, "NO", "CAP_BEPC", "BAC_BAC2", "DIPL_SUP")
@@ -74,6 +118,11 @@ data |>
 
 ggsave(
   filename = here("outputs/figures/appendix-figure-20.png"))
+
+# -----------------------------------------------------------------------------
+# 6. Income distribution
+# -----------------------------------------------------------------------------
+
 
 data |> 
   mutate(
@@ -96,9 +145,13 @@ data |>
   theme_light() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-
 ggsave(
   filename = here("outputs/figures/appendix-figure-21.png"))
+
+# -----------------------------------------------------------------------------
+# 7. Urban–rural classification
+# -----------------------------------------------------------------------------
+
 data |> 
   mutate(
     urban_rural_cat = fct_relevel(urban_rural_cat, "Rural", "Inf 19999", "20000-99999", "Sup 100000", "Agglo Paris")) |> 
@@ -108,9 +161,14 @@ data |>
   scale_y_continuous("Share", labels = scales::percent) +
   theme_light()
 
-
 ggsave(
   filename = here("outputs/figures/appendix-figure-22.png"))
+
+# -----------------------------------------------------------------------------
+# 8. Age distribution
+# -----------------------------------------------------------------------------
+
+
 data |> 
   ggplot(aes(x = factor(age_num), perc)) +
   geom_bar(aes(x = age_num, ..prop.., group = 1, weight = weight)) +
@@ -118,9 +176,13 @@ data |>
   scale_y_continuous("Share", labels = scales::percent) +
   theme_light()
 
-
 ggsave(
   filename = here("outputs/figures/appendix-figure-23.png"))
+
+# -----------------------------------------------------------------------------
+# 9. Car use
+# -----------------------------------------------------------------------------
+
 data |> 
   ggplot() +
   geom_bar(aes(x = factor(car_main_transport), ..prop.., group = 1, weight = weight)) +
@@ -128,9 +190,13 @@ data |>
   scale_y_continuous("Share", labels = scales::percent) +
   theme_light() 
 
-
 ggsave(
   filename = here("outputs/figures/appendix-figure-24.png"))
+
+# -----------------------------------------------------------------------------
+# 10. Climate concern
+# -----------------------------------------------------------------------------
+
 
 data |> 
   mutate(

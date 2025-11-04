@@ -1,20 +1,51 @@
 # =============================================================================
-# 02-study1-analysis.R
+# 03-study-01-analysis.R
+# -----------------------------------------------------------------------------
 # Purpose   : Analysis for Study 1 (OLS models, tables, and figures)
 # Authors   : Malo Jan & Luis Sattelmayer
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Description:
-# This script reproduces the analysis for Study 1:
-#   1. Imports the cleaned dataset produced by 01-study1-cleaning.R
-#   2. Runs OLS models (baseline + controls)
-#   3. Produces regression tables and plots of estimated effects
-#   4. Tests interaction effects with behavior, ideology, and policy attitudes
-#   5. Saves all tables and figures under outputs/
+#   This script reproduces the main analyses of Study 1:
+#     1. Imports the cleaned dataset from 01-study-01-cleaning.R
+#     2. Estimates OLS models (baseline and full specifications)
+#     3. Exports regression tables (LaTeX + HTML)
+#     4. Visualizes average treatment effects (ATEs) and outcome distributions
+#     5. Tests interactions with behavioral, ideological, and policy predictors
+#     6. Saves all model outputs, figures, and tables under `outputs/`
+#
+# Inputs:
+#   - data/processed/study-01-data-clean.rds
+#
+# Outputs:
+#   # Processed datasets
+#   - data/processed/study-01-ols-coefficients.rds
+#   - data/processed/study-01-outcome-distribution.rds
+#   - data/processed/study-01-predictions-ols-int-behavior.rds
+#   - data/processed/study-01-predictions-ols-int-ideology.rds
+#   - data/processed/study-01-predictions-ols-int-policy-support.rds
+#
+#   # Figures
+#   - outputs/figures/figure-01.pdf                # Average Treatment Effects (ATE) plot
+#   - outputs/figures/figure-02.pdf                # Distribution of support by treatment
+#   - outputs/figures/appendix-figure-14.pdf       # Interaction: behavior × treatment
+#   - outputs/figures/appendix-figure-15.pdf       # Interaction: ideology × treatment
+#   - outputs/figures/appendix-figure-16.pdf       # Interaction: climate policy cluster × treatment
+#
+#   # Tables
+#   - outputs/tables/appendix-tbl-01.tex           # Robustness: pre-registered vs. final (highway)
+#   - outputs/tables/appendix-tbl-02.tex           # Robustness: pre-registered vs. final (flights)
+#   - outputs/tables/appendix-tbl-03.tex           # Baseline and full OLS models
+#   - outputs/tables/appendix-tbl-04.tex           # Interaction: ideology × treatment
+#   - outputs/tables/appendix-tbl-05.tex           # Interaction: behavior × treatment
+#   - outputs/tables/appendix-tbl-06.tex           # Interaction: policy cluster × treatment
+#
 # Dependencies:
-#   tidyverse, stargazer, broom, ggeffects
+#   tidyverse, stargazer, broom, ggeffects, here, scales, glue
 # =============================================================================
 
-# Setup
+# -----------------------------------------------------------------------------
+# 0. Setup and data import
+# -----------------------------------------------------------------------------
 
 library(tidyverse)
 library(stargazer)
@@ -23,9 +54,7 @@ library(ggeffects)
 library(here)
 library(scales)
 
-# -----------------------------------------------------------------------------
-# 0. Import data
-# -----------------------------------------------------------------------------
+# Define input file and check existence
 
 input_file <- here("data/processed/study-01-clean-data.rds")
 
@@ -42,8 +71,11 @@ bee_clean <- read_rds(input_file)
 dir.create(here("outputs/tables"), recursive = TRUE, showWarnings = FALSE)
 dir.create(here("outputs/figures"), recursive = TRUE, showWarnings = FALSE)
 
-# --- 1. Prepare per-experiment datasets --------------------------------------
-# Helper: rename treatment/support and label experiment
+# -----------------------------------------------------------------------------
+# 1. Prepare experiment-specific datasets
+# -----------------------------------------------------------------------------
+# Each experiment has separate treatment and outcome variables.
+# This helper function renames them consistently for analysis.
 
 prep_data <- function(data, treatment_col, support_col, experiment_name) {
   data |>
@@ -59,13 +91,18 @@ prep_data <- function(data, treatment_col, support_col, experiment_name) {
 bee_highway <- prep_data(bee_clean, treatment_highway, support_highway_num, "highway")
 bee_flight  <- prep_data(bee_clean, treatment_flights, support_flights_num, "flights")
 
-# --- 2. OLS models ------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# 2. Estimate OLS models (baseline + full controls)
+# -----------------------------------------------------------------------------
+# Models are estimated separately for each experiment:
+#   - Baseline: treatment only
+#   - Full: includes all demographic and attitudinal controls
 
-# Treatment-only
+# Baseline models (treatment only)
 ols_highway_t_only <- lm(support ~ treatment, data = bee_highway, weights = POIDS_bee0)
 ols_flight_t_only  <- lm(support ~ treatment, data = bee_flight,  weights = POIDS_bee0)
 
-# With full controls
+# Full models with covariates
 ols_highway <- lm(
   support ~ treatment + ideology + gov_sati_num + gender + income + age_num_12 +
     education_cat + urban_rural_num + car_main_transport + climate_concern,
@@ -77,6 +114,8 @@ ols_flight <- lm(
     education_cat + urban_rural_num + flight_use + climate_concern,
   data = bee_flight, weights = POIDS_bee0
 )
+
+# Compute standard deviations of the outcome in the control groups for effect size calculations
 
 sd_control_highway <- bee_highway |> 
   filter(treatment == "Control") |> 
@@ -92,7 +131,10 @@ sd_control_flight <- bee_flight |>
   ) |> 
   pull(sd_flight)
 
-# --- 3. Regression Table: OLS -------------------------------------------------
+# -----------------------------------------------------------------------------
+# 3. Regression Table (Appendix Table 03)
+# -----------------------------------------------------------------------------
+# Combine models into a LaTeX table with Stargazer
 
 model_list <- list(ols_highway_t_only, ols_highway, ols_flight_t_only, ols_flight)
 
@@ -117,7 +159,10 @@ stargazer(
   out              = here("outputs/tables/appendix-tbl-03.tex")
 )
 
-# --- 4. Coefficient extraction for ATE plot -----------------------------------
+# -----------------------------------------------------------------------------
+# 4. Extract and save coefficients for plotting (ATEs)
+# -----------------------------------------------------------------------------
+# Store model estimates with confidence intervals for Figure 1
 
 ols_coefficients <- bind_rows(
   tidy(ols_highway, conf.int = TRUE) |> mutate(symbolic = "highway"),
@@ -136,7 +181,10 @@ write_rds(
   here("data/processed/study-01-ols-coefficients.rds")
 )
 
-# --- 5. Figure 1 – ATE Plot ---------------------------------------------------
+# -----------------------------------------------------------------------------
+# 5. Figure 1 – Average Treatment Effects (ATE) plot
+# -----------------------------------------------------------------------------
+# Shows estimated treatment effects (in % of the outcome range) for each experiment.
 
 fig1 <- ols_coefficients |>
   mutate(
@@ -178,12 +226,8 @@ fig1 <- ols_coefficients |>
     fill = alpha("white", 0.7),
     show.legend = FALSE
   ) +
-  
-  
-  scale_color_manual(
+  scale_color_grey(
     "Symbolic policy",
-    values = c("Targeting rich" = "#1b9e77",
-               "Targeting ministers" = "#d95f02")
   ) +
   scale_x_continuous(
     name = "Change in outcome (% of full 1–4 scale range)",
@@ -208,14 +252,15 @@ fig1 <- ols_coefficients |>
     axis.title.x = element_text(size = 10, margin = margin(t = 10))  # smaller x-axis title
   )
 
-
-
-ggsave(here("outputs/figures/figure-01.png"), fig1, dpi = 600)
 ggsave(here("outputs/figures/figure-01.pdf"), fig1, dpi = 600)
 
 
 
-# --- 6. Figure 2 – Distribution of support -----------------------------------
+# -----------------------------------------------------------------------------
+# 6. Figure 2 – Distribution of support by treatment
+# -----------------------------------------------------------------------------
+# Displays how support for each policy varies across treatment arms.
+
 
 outcome_distribution <- bind_rows(bee_highway, bee_flight) |>
   group_by(experiment, treatment) |>
@@ -241,7 +286,7 @@ write_rds(
   here("data/processed/study-01-outcome-distribution.rds")
 )
 
-fig2 <- outcome_distribution |>
+fig2 <-  outcome_distribution |>
   ggplot(aes(
     x = fct_reorder(support, share),
     y = share,
@@ -251,16 +296,11 @@ fig2 <- outcome_distribution |>
     position = position_dodge(width = 0.8),
     width = 0.7
   ) +
-  scale_fill_manual(
+  scale_fill_grey(
     "Symbolic policy",
-    values = c(
-      "Control" = "#7f7f7f",           # dark grey
-      "Rich" = "#1b9e77",    # green
-      "Ministers" = "#d95f02" # orange
-    ),
+    
     labels = c("Control", "Targeting rich", "Targeting ministers")
   ) +
-  geom_hline(yintercept = 50, linetype = "dashed", color = "grey75") +
   labs(
     x = NULL,
     y = "Share of respondents (%)"
@@ -288,11 +328,20 @@ fig2 <- outcome_distribution |>
     plot.margin = margin(t = 5, r = 5, b = 5, l = 5)
   )
 
-ggsave(here("outputs/figures/figure-02.png"), fig2)
+ggsave(here("outputs/figures/figure-02.pdf"), fig2)
 
-# --- 7. Interaction Models ----------------------------------------------------
+# -----------------------------------------------------------------------------
+# 7. Interaction Models
+# -----------------------------------------------------------------------------
+# Test whether treatment effects vary by:
+#   (a) behavior (car use, flight use)
+#   (b) ideology (0–10 scale)
+#   (c) climate policy support cluster (from PCA)
+# Outputs are regression tables and marginal effect plots.
 
-## 7.1 Interaction with behavior
+
+## 7.1 Behavior × Treatment
+
 ols_highway_int_behavior <- lm(
   support ~ treatment*car_main_transport + ideology + gov_sati_num + gender +
     income + age_num_12 + education_cat + urban_rural_num + climate_concern,
@@ -309,7 +358,7 @@ ols_flight_int_behavior <- lm(
 
 stargazer(
   list(ols_highway_int_behavior, ols_flight_int_behavior),
-  type             = "html",
+  type             = "latex",
   single.row       = TRUE,
   font.size        = "small",
   digits           = 3,
@@ -345,7 +394,8 @@ stargazer(
   out          = "outputs/tables/appendix-tbl-05.tex"
 )
 
-## 7.2 Interaction with ideology
+## 7.2 Ideology × Treatment
+
 ols_highway_int_ideology <- lm(
   support ~ treatment*ideology + gov_sati_num + gender + income + age_num_12 +
     education_cat + urban_rural_num + car_main_transport + climate_concern,
@@ -362,7 +412,7 @@ ols_flight_int_ideology <- lm(
 
 stargazer(
   list(ols_highway_int_ideology, ols_flight_int_ideology),
-  type             = "html",
+  type             = "latex",
   single.row       = TRUE,
   font.size        = "small",
   digits           = 3,
@@ -395,8 +445,8 @@ stargazer(
   out          = "outputs/tables/appendix-tbl-04.tex"
 )
 
-## 7.3 Interaction with general climate policy support
-# (Fix typo: '++' -> '+'; leaving factor labels as-is)
+## 7.3 Climate Policy Support Cluster × Treatment
+
 ols_highway_int_policy_support <- lm(
   support ~ treatment*cp_cluster + ideology + gov_sati_num + gender + income +
     age_num_12 + education_cat + urban_rural_num + car_main_transport + climate_concern,
@@ -413,7 +463,7 @@ ols_flight_int_policy_support <- lm(
 
 stargazer(
   list(ols_highway_int_policy_support, ols_flight_int_policy_support),
-  type             = "html",
+  type             = "latex",
   single.row       = TRUE,
   font.size        = "small",
   digits           = 3,
@@ -450,9 +500,12 @@ stargazer(
   out          = "outputs/tables/appendix-tbl-06.tex"
 )
 
-# 8. Predicted values plots for interactions --------------------------------
+# -----------------------------------------------------------------------------
+# 8. Predicted values plots for interactions
+# -----------------------------------------------------------------------------
 
-## 8.1 Interaction with behavior
+# Behavior interactions (Appendix Figure 14)
+
 predictions_ols_int_behavior <- ggpredict(
   ols_highway_int_behavior, terms = c("treatment", "car_main_transport")
 ) |>
@@ -503,10 +556,11 @@ predictions_behavior |>
   coord_flip()
 
 ggsave(
-  "outputs/figures/appendix-figure-14.png",
+  "outputs/figures/appendix-figure-14.pdf",
 )
 
-## 8.2 Interaction with ideology
+# Ideology interactions (Appendix Figure 15)
+
 predictions_ols_int_ideology <- ggpredict(
   ols_highway_int_ideology, terms = c("treatment", "ideology[0,1,2, 3,4, 5,6,7,9, 10] ")
 ) |>
@@ -556,11 +610,11 @@ predictions_ideology |>
   facet_wrap(~policy, scales = "free")
 
 ggsave(
-  "outputs/figures/appendix-figure-15.png",
+  "outputs/figures/appendix-figure-15.pdf",
 )
 
 
-## 8.3 Interaction with policy support cluster
+# Policy cluster interactions (Appendix Figure 16)
 
 predictions_ols_int_policy_support <- ggpredict(
   ols_highway_int_policy_support, terms = c("treatment", "cp_cluster")
@@ -611,7 +665,7 @@ predictions_policy |>
   coord_flip()
 
 ggsave(
-  "outputs/figures/appendix-figure-16.png",
+  "outputs/figures/appendix-figure-16.pdf",
 )
 
 # Robustness checks - Deviation from pre-registration ----------------------- 

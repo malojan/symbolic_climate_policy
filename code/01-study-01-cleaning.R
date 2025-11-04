@@ -1,21 +1,32 @@
 # =============================================================================
-# 01-study1-cleaning.R
-# Purpose  : Clean and recode the BEE dataset for replication of Study 1
-# Authors  : Malo Jan
-# Date     : YYYY-MM-DD
+# 01-study-01-cleaning.R
+# -----------------------------------------------------------------------------
+# Purpose   : Clean and recode the BEE dataset for replication of Study 1
+# Author : Malo Jan
 # =============================================================================
 # Description:
-# This script:
-#   1. Imports the raw data
-#   2. Recodes demographic and treatment variables
-#   3. Handles missing values
-#   4. Constructs a Climate Policy Support Index (PCA + clustering)
-#   5. Exports a cleaned dataset for analysis
+#   This script performs the following steps:
+#     1. Imports the raw BEE dataset (download from data.sciencespo.fr)
+#     2. Recodes demographic, attitudinal, and treatment variables
+#     3. Handles missing values using mean imputation
+#     4. Constructs a Climate Policy Support Index using PCA + HCPC clustering
+#     5. Exports a cleaned dataset for downstream analyses
+#
+# Usage:
+#   source("code/setup_environment.R")   # activates renv environment
+#   source("code/01-study-01-cleaning.R")
+#
+# Input  : data/raw/fr_cdsp_ddi_elipss_202312_bee.csv
+# Output : data/processed/study-01-data-clean.rds
+#          data/processed/study-01-climate-policy-support-data.rds
+# Figures: outputs/figures/appendix-figure-11.png 
+#          outputs/figures/appendix-figure-12.png 
+#          outputs/figures/appendix-figure-13.png
 # =============================================================================
 
-# -----------------------------------------------------------------------------
-# 0. Setup
-# -----------------------------------------------------------------------------
+# 0. Setup---------------------------------------------------------------------
+
+# Load required packages
 
 library(tidyverse)
 library(here)
@@ -277,6 +288,7 @@ cp_coords <- cp_pca$ind$coord |>
   )
 
 # Add climate policy index and clusters to main dataset
+
 bee <- bind_cols(bee, cp_coords)
 
 # --- 6. Select final analysis variables --------------------------------------
