@@ -17,7 +17,7 @@ library(here)
 
 # Load cleaned data
 
-bee_clean <- read_rds(here("data/processed/data-study-01-clean.rds"))
+bee <- read_rds(here("data/processed/data-study-01-clean.rds"))
 
 # IDEOLOGY DISTRIBTION
 
@@ -198,3 +198,4 @@ bee |>
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ggsave(here("outputs/figures/appendix-figure-10.png"))
+

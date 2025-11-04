@@ -19,6 +19,7 @@ library(stargazer)
 library(broom)
 library(ggeffects)
 library(here)
+library(scales)
 
 # -----------------------------------------------------------------------------
 # 0. Import data
@@ -42,20 +43,19 @@ dir.create(here("outputs/figures"), recursive = TRUE, showWarnings = FALSE)
 # --- 1. Prepare per-experiment datasets --------------------------------------
 # Helper: rename treatment/support and label experiment
 
-prep_data <- function(data, treatment_col, support_col, support_st, experiment_name) {
+prep_data <- function(data, treatment_col, support_col, experiment_name) {
   data |>
     rename(
       treatment = {{ treatment_col }},
       support   = {{ support_col }},
-      support_standardized = {{ support_st }}
     ) |> 
     mutate(
     experiment = experiment_name)
 
 }
 
-bee_highway <- prep_data(bee_clean, treatment_highway, support_highway_num, support_highway_standardized, "highway")
-bee_flight  <- prep_data(bee_clean, treatment_flights, support_flights_num, support_flights_standardized, "flights")
+bee_highway <- prep_data(bee_clean, treatment_highway, support_highway_num, "highway")
+bee_flight  <- prep_data(bee_clean, treatment_flights, support_flights_num, "flights")
 
 # --- 2. OLS models ------------------------------------------------------------
 
@@ -137,24 +137,75 @@ write_rds(
 # --- 5. Figure 1 – ATE Plot ---------------------------------------------------
 
 fig1 <- ols_coefficients |>
+  mutate(
+    estimate_standardized = estimate / 3,
+    conf_low_standardized = conf.low / 3,
+    conf_high_standardized = conf.high / 3,
+    estimate_pct = estimate_standardized * 100,
+    conf_low_pct = conf_low_standardized * 100,
+    conf_high_pct = conf_high_standardized * 100,
+    effect_sd = case_when(
+      symbolic == "highway" ~ estimate / 1.049587,
+      symbolic == "flights" ~ estimate / 0.8575725,
+      TRUE ~ NA_real_
+    )
+  ) |>
   filter(term %in% c("Symbolic targeting rich", "Symbolic targeting ministers")) |>
-  ggplot(aes(estimate, symbolic, color = term)) +
-  geom_pointrange(aes(xmin = conf.low, xmax = conf.high),
-                  position = position_dodge(width = 0.5)) +
-  geom_label(
-    aes(label = paste0(sprintf("%.2f", estimate))),
-    vjust = -2, hjust = 0, size = 3,
-    position = position_dodge(width = 0.5)
+  mutate(
+    term = factor(term,
+                  levels = c("Symbolic targeting rich", "Symbolic targeting ministers"),
+                  labels = c("Targeting rich", "Targeting ministers"))
+  ) |>
+  ggplot(aes(x = estimate_pct, y = symbolic, color = term)) +
+  geom_point(position = position_dodge(width = 0.6), size = 3) +
+  geom_crossbar(
+    aes(xmin = conf_low_pct, xmax = conf_high_pct, y = symbolic),
+    position = position_dodge(width = 0.6),
+    linewidth = 0.8,
+    width = 0.05,
+    alpha = 0.9,
+    show.legend = FALSE
   ) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  theme_light() +
-  scale_color_grey("Treatment") +
-  scale_x_continuous("Average Treatment Effect (ATE)") +
-  theme(legend.position = "bottom") +
-  scale_y_discrete("", labels = c(
-    "Ban flights if train alternative < 5h",
-    "Limit highway speed to 110 km/h"
-  ))
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey60") +
+  geom_label(
+    aes(label = paste0(sprintf("%.1f", estimate_pct), "%", " (ATE: ", sprintf("%.2f", estimate),  ", SD: ", sprintf("%.2f", effect_sd), ")")),
+    
+    vjust = -0.4, hjust = -0.2, size = 3.3,
+    position = position_dodge(width = 0.6),
+    label.size = 0,
+    fill = alpha("white", 0.7),
+    show.legend = FALSE
+  ) +
+  
+  
+  scale_color_manual(
+    "Symbolic policy",
+    values = c("Targeting rich" = "#1b9e77",
+               "Targeting ministers" = "#d95f02")
+  ) +
+  scale_x_continuous(
+    name = "Change in outcome (% of full 1–4 scale range)",
+    labels = label_percent(scale = 1, accuracy = 1),
+    limits = c(0, 35),
+  ) +
+  scale_y_discrete(
+    "",
+    labels = c(
+      "Ban flights if train alternative < 5h",
+      "Limit highway speed to 110 km/h"
+    )
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    panel.border = element_rect(color = "grey70", fill = NA),
+    legend.title = element_text(face = "italic", size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(color = "grey85"),
+    axis.title.x = element_text(size = 10, margin = margin(t = 10))  # smaller x-axis title
+  )
+
 
 
 ggsave(here("outputs/figures/figure-01.png"), fig1, dpi = 600)
@@ -189,23 +240,51 @@ write_rds(
 )
 
 fig2 <- outcome_distribution |>
-  ggplot(aes(x = fct_reorder(support, share), share, fill = treatment)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  geom_errorbar(
-    aes(
-      ymin = share - 1.96 * sqrt(share * (100 - share) / sum(n)),
-      ymax = share + 1.96 * sqrt(share * (100 - share) / sum(n))
-    ),
-    width = 0.2,
-    position = position_dodge(width = 0.9)
+  ggplot(aes(
+    x = fct_reorder(support, share),
+    y = share,
+    fill = treatment
+  )) +
+  geom_col(
+    position = position_dodge(width = 0.8),
+    width = 0.7
   ) +
-  scale_fill_grey("Symbolic policy") +
-  theme_light() +
-  labs(x = "", y = "%") +
-  facet_grid(~ fct_relevel(experiment, "Limit highway speed 110 km/h")) +
-  theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 45, hjust = 1)) +
-  coord_flip()
+  scale_fill_manual(
+    "Symbolic policy",
+    values = c(
+      "Control" = "#7f7f7f",           # dark grey
+      "Rich" = "#1b9e77",    # green
+      "Ministers" = "#d95f02" # orange
+    ),
+    labels = c("Control", "Targeting rich", "Targeting ministers")
+  ) +
+  geom_hline(yintercept = 50, linetype = "dashed", color = "grey75") +
+  labs(
+    x = NULL,
+    y = "Share of respondents (%)"
+  ) +
+  facet_grid(
+    ~ fct_relevel(experiment, "Limit highway speed 110 km/h"),
+    labeller = labeller(.cols = label_wrap_gen(width = 25))
+  ) +
+  coord_flip(ylim = c(0, 70)) +
+  scale_y_continuous(labels = label_percent(scale = 1, accuracy = 1), 
+                     breaks = seq(0, 70, by = 10)
+  ) +
+  theme_light(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(face = "italic", size = 10),
+    legend.text = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(color = "grey85"),
+    axis.title.x = element_text(size = 10, margin = margin(t = 10)) ,
+    axis.text.y = element_text(size = 9),
+    axis.title.y = element_blank(),
+    plot.caption = element_text(size = 9, color = "grey40"),
+    plot.margin = margin(t = 5, r = 5, b = 5, l = 5)
+  )
 
 ggsave(here("outputs/figures/figure-02.png"), fig2)
 

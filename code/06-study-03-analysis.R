@@ -206,7 +206,7 @@ model_coefficients <- ols_models |>
 
 write_rds(
   model_coefficients,
-  here("outputs/tables/ols-coefficients-study-03.rds")
+  here("data/processed/ols-coefficients-study-03.rds")
 )
 
 # --- 7. Figures ---------------------------------------------------------------
@@ -214,86 +214,248 @@ write_rds(
 ## Figure 3 - Treatment effects on support for highway speed limit 
 
 model_coefficients   |> 
-  filter(str_detect(term, "treatment"), 
-         model_type == "with_controls") |> 
-  filter(outcome == "support" & experiment != "carbon_tax") |> 
-  mutate(significance = case_when(
-    p.value < 0.001 ~ "***",
-    p.value < 0.01 ~ "**",
-    p.value < 0.05 ~ "*",
-    TRUE ~ ""),
-    term = str_remove(term, "treatment") |> 
-      fct_relevel(c("Symbolic No Costly", "Pure Symbolic", "Costly + Symbolic", "Costly No Symbolic"))) |>
-  ggplot(aes(x = term, y = estimate)) +
-  geom_pointrange(aes(ymin = conf.low, ymax = conf.high), position = position_dodge(width = 0.5)) +
-  geom_label(aes(label = paste(sprintf("%.2f", estimate), significance)), vjust = -1, hjust = 0.7, size = 2.5, position = position_dodge(width = 0.5)) +
-  coord_flip() +
-  scale_color_brewer(palette = "Set1") +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  theme_light() +
-  scale_y_continuous("Average Treatment Effect on policy support") +
-  scale_x_discrete("Treatment group")
-
-ggsave("outputs/figures/figure-03.png")
-
-# Figure 4 : Treatment effects on support for carbon tax
-
-model_coefficients   |> 
-  filter(str_detect(term, "treatment"), 
-         model_type == "with_controls") |> 
-  filter(outcome == "support" & experiment == "carbon_tax") |> 
-  mutate(significance = case_when(
-    p.value < 0.001 ~ "***",
-    p.value < 0.01 ~ "**",
-    p.value < 0.05 ~ "*",
-    TRUE ~ ""),
-    term = str_remove(term, "treatment") |> 
-      fct_relevel(c("Symbolic No Costly", "Pure Symbolic", "Costly + Symbolic", "Costly No Symbolic"))) |>
-  ggplot(aes(x = term, y = estimate)) +
-  geom_pointrange(aes(ymin = conf.low, ymax = conf.high), position = position_dodge(width = 0.5)) +
-  geom_label(aes(label = paste(sprintf("%.2f", estimate), significance)), vjust = -1, hjust = 0.7, size = 2.5, position = position_dodge(width = 0.5)) +
-  coord_flip() +
-  scale_color_brewer(palette = "Set1") +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  theme_light() +
-  scale_y_continuous("Average Treatment Effect on policy support") +
-  scale_x_discrete("Treatment group")
-
-ggsave("outputs/figures/figure-04.png")
-
-
-# Figure 5 : Treatment effects on other perceptions 
-model_coefficients |> 
   filter(
     str_detect(term, "treatment"),
     model_type == "with_controls",
-    outcome != "support") |> 
-  mutate(significance = case_when(
-    p.value < 0.001 ~ "***",
-    p.value < 0.01 ~ "**",
-    p.value < 0.05 ~ "*",
-    TRUE ~ ""),
-    term = str_remove(term, "treatment") |> 
-      fct_relevel(c("Symbolic No Costly", "Pure Symbolic", "Costly + Symbolic", "Costly No Symbolic")), 
+    outcome == "support",
+    experiment != "carbon_tax"
+  ) |>
+  mutate(
+    # Convert 1–4 scale to % of full range
+    estimate_standardized = (estimate / 3) * 100,
+    conf_low_standardized = (conf.low / 3) * 100,
+    conf_high_standardized = (conf.high / 3) * 100,
+    estimate_sd = case_when(
+      experiment == "highway"~ estimate / 1.033991,
+      experiment == "carbon_tax" ~  estimate / 0.8597786
+    ),
+    significance = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01 ~ "**",
+      p.value < 0.05 ~ "*",
+      TRUE ~ ""
+    ),
+    term = str_remove(term, "treatment") |>
+      fct_relevel(c("Symbolic No Costly", "Pure Symbolic", "Costly + Symbolic", "Costly No Symbolic"))
+  ) |>
+  ggplot(aes(x = term, y = estimate_standardized, color = term)) +
+  geom_point(position = position_dodge(width = 0.6), size = 3) +
+  geom_crossbar(
+    aes(ymin = conf_low_standardized, ymax = conf_high_standardized),
+    position = position_dodge(width = 0.6),
+    linewidth = 0.8,
+    width = 0.05,
+    alpha = 0.9,
+    show.legend = FALSE,
+    
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey60") +
+  geom_label(
+    aes(label = paste0(sprintf("%.1f", estimate_standardized), "%", " (ATE: ", sprintf("%.2f", estimate),  ", SD: ", sprintf("%.2f", estimate_sd), ")")),
+    vjust = -0.3, hjust = -0.1, size = 3,
+    label.size = 0,
+    fill = alpha("white", 0.7)
+  )  +
+  coord_flip(ylim = c(-10, 80)) +
+  scale_color_manual(
+    "Treatment",
+    values = c(
+      "Symbolic No Costly" = "#7f7f7f",   # grey baseline
+      "Pure Symbolic" = "#1b9e77",        # green (matches Fig 1)
+      "Costly + Symbolic" = "#d95f02",    # orange (matches Fig 1)
+      "Costly No Symbolic" = "#7570b3"    # purple, distinct
+    ),
+    guide = "none"
+  ) +
+  scale_y_continuous(
+    name = "Change in outcome (% of full 1–4 scale range)",
+    labels = label_percent(scale = 1, accuracy = 1),
+    breaks = seq(-20, 80, by = 10)   # every 5 percentage points
+  ) +
+  scale_x_discrete("Treatment group") +
+  theme_light(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(color = "grey85"),
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.text.x = element_text(size = 9),
+    axis.text.y = element_text(size = 9),
+    axis.title.y = element_text(size = 10, margin = margin(t = 10)),
+    axis.title.x = element_text(size = 10, margin = margin(t = 10))  # smaller x-axis title
+  ) 
+
+ggsave("outputs/figures/figure-03.png")
+ggsave("outputs/figures/figure-03.pdf")
+
+
+# Figure 4 : Treatment effects on support for carbon tax
+
+model_coefficients   |>
+  filter(
+    str_detect(term, "treatment"),
+    model_type == "with_controls",
+    outcome == "support",
+    experiment == "carbon_tax"
+  ) |>
+  mutate(
+    # Convert 1–4 scale to % of full range
+    estimate_standardized = (estimate / 3) * 100,
+    conf_low_standardized = (conf.low / 3) * 100,
+    conf_high_standardized = (conf.high / 3) * 100,
+    estimate_sd = case_when(
+      experiment == "highway"~ estimate / 1.033991,
+      experiment == "carbon_tax" ~  estimate / 0.8597786
+    ),
+    
+    significance = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01 ~ "**",
+      p.value < 0.05 ~ "*",
+      TRUE ~ ""
+    ),
+    term = str_remove(term, "treatment") |>
+      fct_relevel(c("Symbolic No Costly", "Pure Symbolic", "Costly + Symbolic", "Costly No Symbolic"))
+  ) |>
+  ggplot(aes(x = term, y = estimate_standardized, color = term)) +
+  geom_point(position = position_dodge(width = 0.6), size = 3) +
+  geom_crossbar(
+    aes(ymin = conf_low_standardized, ymax = conf_high_standardized),
+    position = position_dodge(width = 0.6),
+    linewidth = 0.8,
+    width = 0.05,
+    alpha = 0.9,
+    show.legend = FALSE,
+    
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey60") +
+  geom_label(
+    aes(label = paste0(sprintf("%.1f", estimate_standardized), "%", " (ATE: ", sprintf("%.2f", estimate),  ", SD: ", sprintf("%.2f", estimate_sd), ")")),
+    vjust = -0.3, hjust = -0.1, size = 3,
+    label.size = 0,
+    fill = alpha("white", 0.7)
+  )  +
+  coord_flip(ylim = c(0, 80)) +
+  scale_color_manual(
+    "Treatment",
+    values = c(
+      "Symbolic No Costly" = "#7f7f7f",   # grey baseline
+      "Pure Symbolic" = "#1b9e77",        # green (matches Fig 1)
+      "Costly + Symbolic" = "#d95f02",    # orange (matches Fig 1)
+      "Costly No Symbolic" = "#7570b3"    # purple, distinct
+    ),
+    guide = "none"
+  ) +
+  scale_y_continuous(
+    name = "Change in outcome (% of full 1–4 scale range)",
+    labels = label_percent(scale = 1, accuracy = 1),
+    breaks = seq(-20, 80, by = 10)   # every 5 percentage points
+  ) +
+  scale_x_discrete("Treatment group") +
+  theme_light(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(color = "grey85"),
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.text.x = element_text(size = 9),
+    axis.text.y = element_text(size = 9),
+    axis.title.y = element_text(size = 10, margin = margin(t = 10)),
+    axis.title.x = element_text(size = 10, margin = margin(t = 10))  # smaller x-axis title
+  )
+
+ggsave("outputs/figures/figure-04.png")
+ggsave("outputs/figures/figure-04.pdf")
+
+
+# Figure 5 : Treatment effects on other perceptions 
+model_coefficients |>
+  filter(
+    str_detect(term, "treatment"),
+    model_type == "with_controls",
+    outcome != "support"
+  ) |>
+  mutate(
+    # Convert to % of full 1–4 scale range
+    estimate_standardized = (estimate / 3) * 100,
+    conf_low_standardized = (conf.low / 3) * 100,
+    conf_high_standardized = (conf.high / 3) * 100,
+    significance = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01 ~ "**",
+      p.value < 0.05 ~ "*",
+      TRUE ~ ""
+    ),
+    term = str_remove(term, "treatment") |>
+      fct_relevel(c("Symbolic No Costly", "Pure Symbolic", "Costly + Symbolic", "Costly No Symbolic")),
     outcome = case_when(
       outcome == "justice" ~ "Fairness",
       outcome == "effective" ~ "Effectiveness",
       outcome == "seriousness" ~ "Seriousness",
       outcome == "elite" ~ "Elite perception"
     ),
-    outcome = fct_relevel(outcome, c("Fairness", "Effectiveness", "Seriousness", "Elite perception")) )  |> 
-  
-  ggplot(aes(x = term, y = estimate, color = experiment)) +
-  geom_pointrange(aes(ymin = conf.low, ymax = conf.high), position = position_dodge(width = 1)) +
-  geom_text(aes(label = paste(sprintf("%.2f", estimate), significance)), vjust = -1, hjust = 1, size = 2, position = position_dodge(width = 1)) +
-  coord_flip() +
-  scale_color_manual("Costly policy", values = c( "#666666", "black"), labels = c("Carbon tax", "Highway speed limit")) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  theme_light() +
-  scale_y_continuous("Average Treatment Effect", limits = c(-0.5, 1.3)) +
+    outcome = fct_relevel(outcome, c("Fairness", "Effectiveness", "Seriousness", "Elite perception"))
+  ) |>
+  ggplot(aes(x = term, y = estimate_standardized, color = experiment)) +
+  geom_point(position = position_dodge(width = 0.6), size = 3, ) +
+  geom_crossbar(
+    aes(ymin = conf_low_standardized, ymax = conf_high_standardized),
+    position = position_dodge(width = 0.6),
+    linewidth = 0.8,
+    width = 0.05,
+    alpha = 0.9,
+    show.legend = FALSE,
+    
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey60") +
+  geom_text(
+    aes(label = paste0(sprintf("%.1f", estimate_standardized), "%", significance)),
+    vjust = -0.2, hjust = -0.75, size = 2,
+    label.size = 0,
+    fill = alpha("white", 0.7),
+    position = position_dodge(width = 1),
+    show.legend = FALSE,
+    
+  ) +
+  coord_flip(ylim = c(-10, 50)) +
+  scale_color_manual(
+    "Treatment",
+    values = c(
+      "carbon_tax" = "#1b9e77",       # green
+      "highway" = "#d95f02"   # orange
+    ),
+    labels = c(
+      "Carbon Tax",
+      "Highway Speed Limit"
+    )
+  ) +
+  scale_y_continuous(
+    "Change in outcome (% of full 1–4 scale range)",
+    labels = scales::label_percent(scale = 1, accuracy = 1),
+    limits = c(-20, 45),
+    breaks = seq(-20, 40, 10)
+  ) +
   scale_x_discrete("Treatment group") +
   facet_wrap(~ outcome) +
-  # Legend at bottom
-  theme(legend.position = "bottom")
-
+  theme_light(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(face = "italic", size = 10),
+    legend.text = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(color = "grey85"),
+    strip.text = element_text(size = 11),
+    axis.text.x = element_text(size = 9),
+    axis.text.y = element_text(size = 9),
+    axis.title.y = element_text(size = 10, margin = margin(r = 10)),
+    axis.title.x = element_text(size = 10, margin = margin(t = 10))
+  )
 ggsave("outputs/figures/figure-05.png")
+ggsave("outputs/figures/figure-05.pdf")
