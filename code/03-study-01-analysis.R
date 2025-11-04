@@ -42,19 +42,20 @@ dir.create(here("outputs/figures"), recursive = TRUE, showWarnings = FALSE)
 # --- 1. Prepare per-experiment datasets --------------------------------------
 # Helper: rename treatment/support and label experiment
 
-prep_data <- function(data, treatment_col, support_col, experiment_name) {
+prep_data <- function(data, treatment_col, support_col, support_st, experiment_name) {
   data |>
     rename(
       treatment = {{ treatment_col }},
-      support   = {{ support_col }}
+      support   = {{ support_col }},
+      support_standardized = {{ support_st }}
     ) |> 
     mutate(
     experiment = experiment_name)
 
 }
 
-bee_highway <- prep_data(bee_clean, treatment_highway, support_highway_num, "highway")
-bee_flight  <- prep_data(bee_clean, treatment_flights, support_flights_num, "flights")
+bee_highway <- prep_data(bee_clean, treatment_highway, support_highway_num, support_highway_standardized, "highway")
+bee_flight  <- prep_data(bee_clean, treatment_flights, support_flights_num, support_flights_standardized, "flights")
 
 # --- 2. OLS models ------------------------------------------------------------
 
@@ -74,6 +75,20 @@ ols_flight <- lm(
     education_cat + urban_rural_num + flight_use + climate_concern,
   data = bee_flight, weights = POIDS_bee0
 )
+
+sd_control_highway <- bee_highway |> 
+  filter(treatment == "Control") |> 
+  summarise(
+    sd_highway = sd(support, na.rm = T),
+  ) |> 
+  pull(sd_highway)
+
+sd_control_flight <- bee_flight |> 
+  filter(treatment == "Control") |> 
+  summarise(
+    sd_flight = sd(support, na.rm = T),
+  ) |> 
+  pull(sd_flight)
 
 # --- 3. Regression Table: OLS -------------------------------------------------
 
@@ -114,6 +129,11 @@ ols_coefficients <- bind_rows(
     )
   )
 
+write_rds(
+  ols_coefficients,
+  here("data/processed/study-01-ols-coefficients.rds")
+)
+
 # --- 5. Figure 1 – ATE Plot ---------------------------------------------------
 
 fig1 <- ols_coefficients |>
@@ -136,12 +156,15 @@ fig1 <- ols_coefficients |>
     "Limit highway speed to 110 km/h"
   ))
 
-ggsave(here("outputs/figures/figure-01.png"), fig1)
+
+ggsave(here("outputs/figures/figure-01.png"), fig1, dpi = 600)
+ggsave(here("outputs/figures/figure-01.pdf"), fig1, dpi = 600)
+
 
 
 # --- 6. Figure 2 – Distribution of support -----------------------------------
 
-fig2 <- bind_rows(bee_highway, bee_flight) |>
+outcome_distribution <- bind_rows(bee_highway, bee_flight) |>
   group_by(experiment, treatment) |>
   count(support, wt = POIDS_bee0) |>
   drop_na() |>
@@ -158,7 +181,14 @@ fig2 <- bind_rows(bee_highway, bee_flight) |>
       experiment == "highway" ~ "Limit highway speed 110 km/h",
       experiment == "flights" ~ "Ban on flights if train alternative less 5hrs"
     )
-  ) |>
+  ) 
+
+write_rds(
+  outcome_distribution,
+  here("data/processed/study-01-outcome-distribution.rds")
+)
+
+fig2 <- outcome_distribution |>
   ggplot(aes(x = fct_reorder(support, share), share, fill = treatment)) +
   geom_bar(stat = "identity", position = "dodge") +
   geom_errorbar(

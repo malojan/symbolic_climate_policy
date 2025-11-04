@@ -51,6 +51,24 @@ data_carbon_tax <- prep_data(
   "carbon_tax"
 )
 
+# Standard deviation control group
+
+sd_control_highway <- data_highway |> 
+  filter(treatment == "Control") |> 
+  summarise(
+    sd_highway = sd(support, na.rm = T),
+  ) |> 
+  pull(sd_highway)
+
+sd_control_carbon <- data_carbon_tax |> 
+  filter(treatment == "Control") |> 
+  summarise(
+    sd_control_carbon = sd(support, na.rm = T),
+  ) |> 
+  pull(sd_control_carbon)
+
+
+
 datasets <- list(highway = data_highway, carbon_tax = data_carbon_tax)
 outcomes <- c("support", "justice", "effective", "seriousness", "elite")
 
@@ -92,6 +110,7 @@ ols_models <- expand_grid(
       }
     )
   )
+
 
 # --- 4. Helper for Stargazer tables (fixed) ----------------------------------
 # dep_var_label  : single string for the DV name shown in the table (e.g., "Support")
@@ -184,6 +203,11 @@ model_coefficients <- ols_models |>
   mutate(tidy = map(model, ~ broom::tidy(.x, conf.int = TRUE,     conf.level = 0.95
 ))) |>
   unnest(tidy) 
+
+write_rds(
+  model_coefficients,
+  here("outputs/tables/ols-coefficients-study-03.rds")
+)
 
 # --- 7. Figures ---------------------------------------------------------------
 
