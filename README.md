@@ -26,13 +26,14 @@ fairness, elite responsiveness and policy effectiveness.
 The folders `code/`, `data/`, and `outputs/` contain all replication materials for the paper.
 
 The R environment is fully managed using [`renv`](https://rstudio.github.io/renv/).  
-To replicate the analyses, clone this repository and open the R Project file `More_than_Symbols.Rproj` in **RStudio** (or start R from the project root). The entire workflow — from data preparation to tables and figures — can be executed automatically by running the script:
+To replicate the analyses, clone this repository and open the R Project file `More_than_Symbols.Rproj` in **RStudio** (or start R from the project root). The entire workflow — from data preparation to tables and figures — can be executed automatically by running the scripts:
 
 ```r
-source("run_all.R")
+source("code/00-setup-environment.R")
+source("code/full_replication.R")
 ```
 
-This script will:
+This will:
 
 - Activate or install the renv environment
 - Install all required packages 
