@@ -17,7 +17,7 @@
 #   source("code/01-study-01-cleaning.R")
 #
 # Input  : data/raw/fr_cdsp_ddi_elipss_202312_bee.csv
-# Output : data/processed/study-01-data-clean.rds
+# Output : data/processed/study-01-clean-data.rds
 #          data/processed/study-01-climate-policy-support-data.rds
 # Figures: outputs/figures/appendix-figure-11.png 
 #          outputs/figures/appendix-figure-12.png 
@@ -304,7 +304,7 @@ bee <- bee |>
 
 # --- 7. Export cleaned dataset -----------------------------------------------
 
-output_path <- here("data/processed/study-01-data-clean.rds")
+output_path <- here("data/processed/study-01-clean-data.rds")
 write_rds(bee, output_path)
 
 message(glue::glue("Cleaned Study 1 dataset saved to {output_path}"))

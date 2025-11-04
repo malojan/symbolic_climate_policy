@@ -15,7 +15,7 @@
 #   source("code/02-study-01-descriptives.R")
 #
 # Inputs:
-#   - data/processed/study-01-data-clean.rds
+#   - data/processed/study-01-clean-data.rds
 #
 # Outputs:
 #   - outputs/figures/appendix-figure-01.pdf : Ideology distribution
@@ -43,7 +43,7 @@ library(scales)
 
 # --- 1. Load cleaned data -----------------------------------------------------
 
-bee <- read_rds(here("data/processed/study-01-data-clean.rds"))
+bee <- read_rds(here("data/processed/study-01-clean-data.rds"))
 
 
 # -----------------------------------------------------------------------------

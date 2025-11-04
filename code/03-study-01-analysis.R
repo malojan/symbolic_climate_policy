@@ -14,7 +14,7 @@
 #     6. Saves all model outputs, figures, and tables under `outputs/`
 #
 # Inputs:
-#   - data/processed/study-01-data-clean.rds
+#   - data/processed/study-01-clean-data.rds
 #
 # Outputs:
 #   # Processed datasets

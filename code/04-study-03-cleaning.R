@@ -17,7 +17,7 @@
 #   - data/raw/study-03-data-raw.sav
 #
 # Outputs:
-#   - data/processed/data-study-03-clean.rds
+#   - data/processed/study-03-clean-data.rds
 #
 # Dependencies:
 #   haven, tidyverse, here, glue
@@ -227,7 +227,7 @@ data_clean <- data_clean |>
 # 7. Export cleaned dataset
 # -----------------------------------------------------------------------------
 
-output_path <- here("data/processed/data-study-03-clean.rds")
+output_path <- here("data/processed/study-03-clean-data.rds")
 write_rds(data_clean, output_path)
 
 message(glue::glue("Cleaned Study 3 dataset saved to {output_path}"))

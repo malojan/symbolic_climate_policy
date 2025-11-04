@@ -16,7 +16,7 @@
 #     6. Extracts and saves standardized model coefficients
 #     7. Visualizes treatment effects across all key outcomes (Figures 3–5)
 # Inputs:
-#   - data/processed/data-study-03-clean.rds
+#   - data/processed/study-03-clean-data.rds
 #
 # Outputs:
 #   - data/processed/study-03-ols-coefficients.rds
