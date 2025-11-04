@@ -11,13 +11,14 @@
 
 # 0. Setup-------------------------------------------------------------------
 
+
 library(tidyverse)
 library(here)
 
 
 # Load cleaned data
 
-bee <- read_rds(here("data/processed/data-study-01-clean.rds"))
+bee <- read_rds(here("data/processed/study-01-clean-data.rds"))
 
 # IDEOLOGY DISTRIBTION
 
@@ -35,7 +36,7 @@ bee |>
   scale_x_discrete('Left-right self placement')
 
 ggsave(
-  here("outputs/figures/appendix-figure-01.png"),
+  here("outputs/figures/appendix-figure-01.pdf"),
 )
 
 # Government satisfaction
@@ -55,7 +56,7 @@ bee |>
   theme_light() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-ggsave(here("outputs/figures/appendix-figure-02.png"))
+ggsave(here("outputs/figures/appendix-figure-02.pdf"))
 
 # Gender
 
@@ -67,7 +68,7 @@ bee |>
   theme_light() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-ggsave(here("outputs/figures/appendix-figure-03.png"))
+ggsave(here("outputs/figures/appendix-figure-03.pdf"))
 
 
 # Education
@@ -83,7 +84,7 @@ bee |>
   theme_light() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-ggsave(here("outputs/figures/appendix-figure-04.png"))
+ggsave(here("outputs/figures/appendix-figure-04.pdf"))
 
 # Education
 
@@ -109,7 +110,7 @@ bee |>
   theme_light() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-ggsave(here("outputs/figures/appendix-figure-05.png"))
+ggsave(here("outputs/figures/appendix-figure-05.pdf"))
 
 # Urban rural
 
@@ -129,7 +130,7 @@ bee |>
   scale_y_continuous("Share", labels = scales::percent) +
   theme_light()
 
-ggsave(here("outputs/figures/appendix-figure-06.png"))
+ggsave(here("outputs/figures/appendix-figure-06.pdf"))
 
 # Age
 
@@ -157,7 +158,7 @@ bee |>
   # Rotate x axis
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-ggsave(here("outputs/figures/appendix-figure-07.png"))
+ggsave(here("outputs/figures/appendix-figure-07.pdf"))
 # 
 
 bee |> 
@@ -167,7 +168,7 @@ bee |>
   scale_y_continuous("Share", labels = scales::percent) +
   theme_light() 
 
-ggsave(here("outputs/figures/appendix-figure-08.png"))
+ggsave(here("outputs/figures/appendix-figure-08.pdf"))
 
 
 bee |> 
@@ -177,7 +178,7 @@ bee |>
   scale_y_continuous("Share", labels = scales::percent) +
   theme_light()
 
-ggsave(here("outputs/figures/appendix-figure-09.png"))
+ggsave(here("outputs/figures/appendix-figure-09.pdf"))
 
 bee |> 
   mutate(
@@ -197,5 +198,5 @@ bee |>
   # Rotate labels
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-ggsave(here("outputs/figures/appendix-figure-10.png"))
+ggsave(here("outputs/figures/appendix-figure-10.pdf"))
 

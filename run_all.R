@@ -6,29 +6,10 @@
 # Description:
 # This script executes all data cleaning and analysis scripts in order to
 # reproduce the results of the project. It automatically:
-#   1. Ensures that the R environment is restored via renv.
-#   2. Runs each R script under code/, in sequence.
-#   3. Logs any errors to outputs/logs/run_all_errors_<timestamp>.log.
-#   4. Stops if required data are missing.
+#   1. Runs each R script under code/, in sequence.
+#   2. Logs any errors to outputs/logs/run_all_errors_<timestamp>.log.
+#   3. Stops if required data are missing.
 # =============================================================================
-
-# --- 0. Ensure renv is installed ---------------------------------------------
-if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
-
-# --- 1. Check and activate renv environment ----------------------------------
-message("Checking renv environment...")
-
-needs_restore <- tryCatch({
-  info <- renv::status()
-  !identical(info$synchronized, TRUE)
-}, error = function(e) TRUE)
-
-if (needs_restore) {
-  message("Environment out of sync — restoring from renv.lock ...")
-  renv::restore(prompt = FALSE)
-} else {
-  message("renv environment up to date.")
-}
 
 # --- 2. Load base helper packages --------------------------------------------
 library(purrr)

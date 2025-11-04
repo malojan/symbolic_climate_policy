@@ -14,6 +14,8 @@
 #   tidyverse, stargazer, broom, ggeffects
 # =============================================================================
 
+# Setup
+
 library(tidyverse)
 library(stargazer)
 library(broom)
@@ -25,7 +27,7 @@ library(scales)
 # 0. Import data
 # -----------------------------------------------------------------------------
 
-input_file <- here("data/processed/data-study-01-clean.rds")
+input_file <- here("data/processed/study-01-clean-data.rds")
 
 if (!file.exists(input_file)) {
   stop(glue::glue(
@@ -463,7 +465,7 @@ predictions_ols_int_behavior_flights <- ggpredict(
   as_tibble() |>
   mutate(policy = "flights")
 
-bind_rows(predictions_ols_int_behavior, predictions_ols_int_behavior_flights) |>
+predictions_behavior <- bind_rows(predictions_ols_int_behavior, predictions_ols_int_behavior_flights) |>
   mutate(
     x = fct_relevel(x, c("Control", "Ministers", "Rich")),
     group = case_when(
@@ -475,7 +477,14 @@ bind_rows(predictions_ols_int_behavior, predictions_ols_int_behavior_flights) |>
       policy == "flights" ~ "Ban flight if train alternative 5 hours",
       policy == "highway" ~ "Limit highway speed to 100 km/h"
     ) |> fct_relevel("Limit highway speed to 100 km/h")
-  ) |>
+  )
+
+write_rds(
+  predictions_behavior,
+  "data/processed/study-01-predictions-ols-int-behavior.rds")
+
+
+predictions_behavior |>
   ggplot(aes(group, predicted, color = x)) +
   geom_pointrange(aes(ymin = conf.low, ymax = conf.high),
                   position = position_dodge(width = 0.5)) +
@@ -510,10 +519,18 @@ predictions_ols_int_ideology_flights <- ggpredict(
   as_tibble() |>
   mutate(policy = "flights")
 
+predictions_ideology <-
 bind_rows(
   predictions_ols_int_ideology,
   predictions_ols_int_ideology_flights
-) |>
+)
+
+write_rds(
+  predictions_ideology,
+  "data/processed/study-01-predictions-ols-int-ideology.rds"
+)
+
+predictions_ideology |>
   mutate(
     x = fct_relevel(x, c("Control", "Ministers", "Rich")),
     policy = case_when(
@@ -557,10 +574,17 @@ predictions_ols_int_policy_support_flights <- ggpredict(
   as_tibble() |>
   mutate(policy = "flights")
 
-bind_rows(
+predictions_policy <- bind_rows(
   predictions_ols_int_policy_support,
   predictions_ols_int_policy_support_flights
-) |>
+)
+
+write_rds(
+  predictions_policy,
+  "data/processed/study-01-predictions-ols-int-policy-support.rds"
+)
+
+predictions_policy |>
   mutate(
     x = fct_relevel(x, c("Control", "Ministers", "Rich")),
     group = fct_relevel(group, c("Anti-climate policy", "Moderate climate policy")),

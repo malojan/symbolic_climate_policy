@@ -212,6 +212,8 @@ cp_data <- bee |>
   bind_cols(bee) |> 
   select(starts_with("cp_"))
 
+write_rds(cp_data, "data/processed/study-01-climate-policy-support-data.rds")
+
 # Principal Component Analysis (PCA)
 cp_pca <- FactoMineR::PCA(cp_data, scale.unit = TRUE, graph = FALSE)
 
@@ -290,7 +292,7 @@ bee <- bee |>
 
 # --- 7. Export cleaned dataset -----------------------------------------------
 
-output_path <- here("data/processed/data-study-01-clean.rds")
+output_path <- here("data/processed/study-01-data-clean.rds")
 write_rds(bee, output_path)
 
 message(glue::glue("Cleaned Study 1 dataset saved to {output_path}"))

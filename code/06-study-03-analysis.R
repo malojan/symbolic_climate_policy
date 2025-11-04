@@ -6,13 +6,16 @@
 # =============================================================================
 
 # --- Libraries ---------------------------------------------------------------
+
 library(tidyverse)
 library(stargazer)
 library(broom)
 library(ggeffects)
+library(scales)
+library(here)
 
 # --- 0. Import data -----------------------------------------------------------
-data <- read_rds("data/processed/data-study-03-clean.rds")
+data <- read_rds("data/processed/study-03-clean-data.rds")
 
 # --- 1. Prepare per-experiment datasets --------------------------------------
 
@@ -202,11 +205,14 @@ pwalk(
 model_coefficients <- ols_models |>
   mutate(tidy = map(model, ~ broom::tidy(.x, conf.int = TRUE,     conf.level = 0.95
 ))) |>
-  unnest(tidy) 
+  unnest(tidy) |> 
+  select(-model)
+
+model_coefficients
 
 write_rds(
   model_coefficients,
-  here("data/processed/ols-coefficients-study-03.rds")
+  here("data/processed/study-03-ols-coefficients.rds")
 )
 
 # --- 7. Figures ---------------------------------------------------------------
@@ -288,7 +294,6 @@ model_coefficients   |>
     axis.title.x = element_text(size = 10, margin = margin(t = 10))  # smaller x-axis title
   ) 
 
-ggsave("outputs/figures/figure-03.png")
 ggsave("outputs/figures/figure-03.pdf")
 
 
@@ -370,7 +375,6 @@ model_coefficients   |>
     axis.title.x = element_text(size = 10, margin = margin(t = 10))  # smaller x-axis title
   )
 
-ggsave("outputs/figures/figure-04.png")
 ggsave("outputs/figures/figure-04.pdf")
 
 
@@ -457,5 +461,6 @@ model_coefficients |>
     axis.title.y = element_text(size = 10, margin = margin(r = 10)),
     axis.title.x = element_text(size = 10, margin = margin(t = 10))
   )
-ggsave("outputs/figures/figure-05.png")
+
 ggsave("outputs/figures/figure-05.pdf")
+

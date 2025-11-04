@@ -11,13 +11,14 @@
 
 # 0. Setup-------------------------------------------------------------------
 
+
 library(tidyverse)
 library(here)
 
 
 # Load cleaned data
 
-data <- read_rds(here("data/processed/data-study-03-clean.rds"))
+data <- read_rds(here("data/processed/study-03-clean-data.rds"))
 
 
 data |> 
