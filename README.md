@@ -1,6 +1,6 @@
 # More than Symbols : the effect of symbolic policies on support for costly climate policies
 
-This repository contains the code and data for the paper "More than Symbols: the effect of symbolic policies on support for costly climate policies" by Théodore Tallent (theodore.tallent\@sciencespo.fr), Malo Jan (malo.jan\@sciencespo.fr) and Luis Sattelmayer (luis.sattelmayer\@sciencespo.fr), conditionally accepted in *American Political Science Review*.
+This repository contains the code and data for the paper "More than Symbols: the effect of symbolic policies on support for costly climate policies" by Théodore Tallent (theodore.tallent\@sciencespo.fr), Malo Jan (malo.jan\@sciencespo.fr) and Luis Sattelmayer (luis.sattelmayer\@sciencespo.fr), forthcoming in the *American Political Science Review*.
 
 **Abstract**
 
@@ -21,7 +21,6 @@ fairness, elite responsiveness and policy effectiveness.
  The paper preprint is available at OSF: https://osf.io/ufb96/
 
 ## Replication materials
-
 
 The folders `code/`, `data/`, and `outputs/` contain all replication materials for the paper.
 
